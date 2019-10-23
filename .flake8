@@ -1,2 +1,4 @@
 [flake8]
-max-line-length = 80
+max-line-length = 88
+exclude =
+    perfectpitch/data/protobuf/music_pb2.py
