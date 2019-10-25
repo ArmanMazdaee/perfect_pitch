@@ -16,6 +16,18 @@ def audio_from_string(serialized):
     return librosa.to_mono(wav)
 
 
+def spec_from_audio(audio):
+    mel = librosa.feature.melspectrogram(
+        audio,
+        constants.SAMPLE_RATE,
+        hop_length=constants.SPEC_HOP_LENGTH,
+        fmin=30.0,
+        n_mels=constants.SPEC_N_BINS,
+        htk=True,
+    )
+    return mel.T
+
+
 def velocity_range_from_string(serialized):
     velocity_range = music_pb2.VelocityRange.FromString(serialized)
     return (

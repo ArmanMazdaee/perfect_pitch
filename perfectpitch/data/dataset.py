@@ -1,6 +1,7 @@
 from glob import glob
 import tensorflow as tf
 
+from perfectpitch import constants
 from perfectpitch.data import utils
 
 
@@ -55,6 +56,15 @@ def _process_example(example):
     }
 
 
+def _add_spec(data):
+    spec = tf.numpy_function(
+        utils.spec_from_audio, [data["audio"]], tf.dtypes.float32, name="audio_spec"
+    )
+    spec.set_shape([None, constants.SPEC_N_BINS])
+    data["spec"] = spec
+    return spec
+
+
 def _element_spec_to_shape(element_spec):
     if isinstance(element_spec, dict):
         return {k: _element_spec_to_shape(v) for k, v in element_spec.items()}
@@ -78,6 +88,7 @@ def load_dataset(pattern, is_training, batch_size):
 
     dataset = dataset.map(_parse_example)
     dataset = dataset.map(_process_example)
+    dataset = dataset.map(_add_spec)
 
     padded_shapes = _element_spec_to_shape(dataset.element_spec)
     return dataset.padded_batch(batch_size, padded_shapes, drop_remainder=is_training)
