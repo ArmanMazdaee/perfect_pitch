@@ -7,7 +7,7 @@ import librosa
 import mido
 
 from perfectpitch import constants
-from .protobuf import music_pb2
+from perfectpitch.protobuf import music_pb2
 
 
 def audio_from_string(serialized):

@@ -2,7 +2,7 @@ from glob import glob
 import tensorflow as tf
 
 from perfectpitch import constants
-from perfectpitch.data import utils
+from perfectpitch import utils
 
 
 def _parse_example(example_proto):
