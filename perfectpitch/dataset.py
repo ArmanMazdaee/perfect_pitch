@@ -46,44 +46,64 @@ def _parse_notesequence(serialized):
     def func(serialized):
         transcription = music_pb2.NoteSequence.FromString(serialized)
 
-        sustains_ranges = []
-        sustain_start = None
-        control_changes = sorted(
-            transcription.control_changes, key=operator.attrgetter("time")
+        SUSTAIN_ON = 0
+        SUSTAIN_OFF = 1
+        NOTE_ON = 2
+        NOTE_OFF = 3
+
+        events = []
+        events.extend(
+            [(NOTE_ON, note.start_time, note) for note in transcription.notes]
         )
-        for control_change in control_changes:
-            if control_change.control_number != 64:
-                continue
-            if sustain_start is None and control_change.control_value >= 64:
-                sustain_start = control_change.time
-            elif sustain_start is not None and control_change.control_value < 64:
-                sustains_ranges.append((sustain_start, control_change.time))
-                sustain_start = None
-        if sustain_start is not None:
-            sustain_end = max(sustain_start, transcription.total_time)
-            sustains_ranges.append((sustain_start, sustain_end))
-        sustains_ranges.append((math.inf, math.inf))
+        events.extend([(NOTE_OFF, note.end_time, note) for note in transcription.notes])
+        events.extend(
+            [
+                (
+                    SUSTAIN_ON if control_change.control_value >= 64 else SUSTAIN_OFF,
+                    control_change.time,
+                    control_change,
+                )
+                for control_change in transcription.control_changes
+                if control_change.control_number == 64
+            ]
+        )
+        events.sort(key=operator.itemgetter(1, 0))
 
-        active_sustain = 0
-        sustain_start, sustain_end = sustains_ranges[active_sustain]
-        notes = sorted(transcription.notes, key=operator.attrgetter("end_time"))
-        pitches = np.zeros([len(notes)], dtype=np.int8)
-        intervals = np.zeros([len(notes), 2], dtype=np.float32)
-        velocities = np.zeros([len(notes)], dtype=np.int8)
+        active_notes = []
+        sustain = False
+        for kind, time, meta in events:
+            if kind == SUSTAIN_ON and not sustain:
+                sustain = True
+            elif kind == SUSTAIN_OFF and sustain:
+                sustain = False
+                for note in list(active_notes):
+                    if note.end_time < time:
+                        note.end_time = time
+                        active_notes.remove(note)
+            elif kind == NOTE_ON:
+                if sustain:
+                    for note in list(active_notes):
+                        if note.pitch == meta.pitch:
+                            note.end_time = time
+                            active_notes.remove(note)
+                            if note.start_time == note.end_time:
+                                transcription.notes.remove(note)
+                active_notes.append(meta)
+            elif kind == NOTE_OFF and not sustain:
+                if meta in active_notes:
+                    active_notes.remove(meta)
 
-        for i, note in enumerate(notes):
-            while note.end_time >= sustain_end:
-                active_sustain += 1
-                sustain_start, sustain_end = sustains_ranges[active_sustain]
+        for note in active_notes:
+            note.end_time = time
 
-            pitches[i] = note.pitch
-            intervals[i, 0] = note.start_time
-            if sustain_start < note.end_time < sustain_end:
-                intervals[i, 1] = sustain_end
-            else:
-                intervals[i, 1] = note.end_time
-            velocities[i] = note.velocity
-
+        pitches = np.array([note.pitch for note in transcription.notes], dtype=np.int8)
+        intervals = np.array(
+            [(note.start_time, note.end_time) for note in transcription.notes],
+            dtype=np.float32,
+        )
+        velocities = np.array(
+            [note.velocity for note in transcription.notes], dtype=np.int8
+        )
         return pitches, intervals, velocities
 
     pitches, intervals, velocities = tf.numpy_function(
