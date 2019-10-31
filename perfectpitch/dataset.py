@@ -1,5 +1,4 @@
 import operator
-import math
 import io
 from glob import glob
 
