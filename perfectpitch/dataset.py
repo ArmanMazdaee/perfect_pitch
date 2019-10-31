@@ -136,7 +136,7 @@ def _parse_example(example_proto):
 
 def _add_spec(data):
     spec = tf.numpy_function(
-        utils.spec_from_audio, [data["audio"]], tf.dtypes.float32, name="audio_spec"
+        utils.audio_to_spec, [data["audio"]], tf.dtypes.float32, name="audio_spec"
     )
     spec.set_shape([None, constants.SPEC_N_BINS])
     data["spec"] = spec

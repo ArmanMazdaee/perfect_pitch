@@ -7,7 +7,7 @@ import mido
 from perfectpitch import constants
 
 
-def spec_from_audio(audio):
+def audio_to_spec(audio):
     mel = librosa.feature.melspectrogram(
         audio,
         constants.SAMPLE_RATE,
@@ -19,7 +19,7 @@ def spec_from_audio(audio):
     return mel.T
 
 
-def notesequence_to_midi(path, pitches, intervals, velocities):
+def save_notesequence(path, pitches, intervals, velocities):
     midi = mido.MidiFile()
     track = mido.MidiTrack()
     midi.tracks.append(track)
