@@ -143,6 +143,45 @@ def _add_spec(data):
     return data
 
 
+def _add_pianoroll(data):
+    def func(pitches, intervals, velocities, max_velocity):
+        pianoroll = utils.notesequence_to_pianoroll(
+            pitches, intervals, velocities, max_velocity
+        )
+        return (
+            pianoroll["actives"],
+            pianoroll["onsets"],
+            pianoroll["offsets"],
+            pianoroll["velocities"],
+        )
+
+    notesequence = data["notesequence"]
+    velocity_range = data["velocity_range"]
+    actives, onsets, offsets, velocities = tf.numpy_function(
+        func,
+        [
+            notesequence["pitches"],
+            notesequence["intervals"],
+            notesequence["velocities"],
+            velocity_range["max"],
+        ],
+        [tf.dtypes.float32, tf.dtypes.float32, tf.dtypes.float32, tf.dtypes.float32],
+        name="pianoroll",
+    )
+    num_piches = constants.MAX_PITCH - constants.MIN_PITCH + 1
+    actives.set_shape([None, num_piches])
+    onsets.set_shape([None, num_piches])
+    offsets.set_shape([None, num_piches])
+    velocities.set_shape([None, num_piches])
+    data["pianoroll"] = {
+        "actives": actives,
+        "onsets": onsets,
+        "offsets": offsets,
+        "velocities": velocities,
+    }
+    return data
+
+
 def _remove_data(key):
     def func(data):
         del data[key]
@@ -167,6 +206,7 @@ def load_dataset(
     velocity_range=False,
     notesequence=False,
     spec=False,
+    pianoroll=False,
 ):
     filenames = sorted(glob(pattern))
 
@@ -186,6 +226,9 @@ def load_dataset(
 
     if spec:
         dataset = dataset.map(_add_spec)
+
+    if pianoroll:
+        dataset = dataset.map(_add_pianoroll)
 
     if not id:
         dataset = dataset.map(_remove_data("id"))
