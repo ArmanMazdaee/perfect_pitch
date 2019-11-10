@@ -182,6 +182,55 @@ def _add_pianoroll(data):
     return data
 
 
+def _pad_or_truncate_pianoroll(data):
+    def func(spec, actives, onsets, offsets, velocities):
+        spec_length = spec.shape[0]
+        pianoroll_length = actives.shape[0]
+        if spec_length > pianoroll_length:
+            paddings = [[0, spec_length - pianoroll_length], [0, 0]]
+            return (
+                tf.pad(actives, paddings),
+                tf.pad(onsets, paddings),
+                tf.pad(offsets, paddings),
+                tf.pad(velocities, paddings),
+            )
+        elif spec_length < pianoroll_length:
+            return (
+                actives[:spec_length, :],
+                onsets[:spec_length, :],
+                offsets[:spec_length, :],
+                velocities[:spec_length, :],
+            )
+        else:
+            return actives, onsets, offsets, velocities
+
+    pianoroll = data["pianoroll"]
+    actives, onsets, offsets, velocities = tf.numpy_function(
+        func,
+        [
+            data["spec"],
+            pianoroll["actives"],
+            pianoroll["onsets"],
+            pianoroll["offsets"],
+            pianoroll["velocities"],
+        ],
+        [tf.dtypes.float32, tf.dtypes.float32, tf.dtypes.float32, tf.dtypes.float32],
+        name="pad_or_truncate_pianoroll",
+    )
+    num_piches = constants.MAX_PITCH - constants.MIN_PITCH + 1
+    actives.set_shape([None, num_piches])
+    onsets.set_shape([None, num_piches])
+    offsets.set_shape([None, num_piches])
+    velocities.set_shape([None, num_piches])
+    data["pianoroll"] = {
+        "actives": actives,
+        "onsets": onsets,
+        "offsets": offsets,
+        "velocities": velocities,
+    }
+    return data
+
+
 def _remove_data(key):
     def func(data):
         del data[key]
@@ -207,6 +256,7 @@ def load_dataset(
     notesequence=False,
     spec=False,
     pianoroll=False,
+    pad_or_truncate_pianoroll=True,
 ):
     filenames = sorted(glob(pattern))
 
@@ -229,6 +279,9 @@ def load_dataset(
 
     if pianoroll:
         dataset = dataset.map(_add_pianoroll)
+
+    if spec and pianoroll and pad_or_truncate_pianoroll:
+        dataset = dataset.map(_pad_or_truncate_pianoroll)
 
     if not id:
         dataset = dataset.map(_remove_data("id"))
