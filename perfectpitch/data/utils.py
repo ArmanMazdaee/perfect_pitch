@@ -42,3 +42,99 @@ def save_notesequence(path, pitches, intervals, velocities):
         time = message.time
 
     midi.save(path)
+
+
+def notesequence_to_pianoroll(pitches, intervals, velocities, velocity_max):
+    frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
+    num_frames = int(intervals.max() / frame_duration) + 1
+    num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
+
+    notes = sorted(
+        [
+            (pitch, start_time, end_time, velocity)
+            for (pitch, (start_time, end_time), velocity) in zip(
+                pitches, intervals, velocities
+            )
+        ],
+        key=operator.itemgetter(1),
+    )
+
+    active_frames = np.zeros([num_pitches, num_frames], dtype=np.float32)
+    onset_frames = np.zeros_like(active_frames)
+    offset_frames = np.zeros_like(active_frames)
+    velocity_frames = np.zeros_like(active_frames)
+
+    for pitch, start_time, end_time, velocity in notes:
+        if pitch > constants.MAX_PITCH or pitch < constants.MIN_PITCH:
+            continue
+
+        pitch_index = pitch - constants.MIN_PITCH
+
+        start_frame = int(start_time / frame_duration)
+        end_frame = int(end_time / frame_duration)
+        if start_frame == end_frame:
+            continue
+
+        active_frames[pitch_index, start_frame:end_frame] = 1
+        onset_frames[pitch_index, start_frame] = 1
+        offset_frames[pitch_index, end_frame] = 1
+        velocity_frames[pitch_index, start_frame:end_frame] = velocity / velocity_max
+
+    return {
+        "actives": active_frames,
+        "onsets": onset_frames,
+        "offsets": offset_frames,
+        "velocities": velocity_frames,
+    }
+
+
+def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
+    frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
+
+    notes = []
+    pitch_start_frame = {}
+
+    def start_note(pitch, start_frame):
+        pitch_start_frame[pitch] = start_frame
+
+    def end_note(pitch, end_frame):
+        start_frame = pitch_start_frame.pop(pitch)
+        if start_frame == end_frame:
+            return
+
+        notes.append(
+            (
+                pitch + constants.MIN_PITCH,
+                start_frame * frame_duration,
+                end_frame * frame_duration,
+                np.clip(velocities[pitch, start_frame], 0, 1) * 80 + 10,
+            )
+        )
+
+    for frame in range(actives.shape[1]):
+        for pitch in range(actives.shape[0]):
+            is_onset = onsets[pitch, frame] > 0.5
+            is_previous_onset = onsets[pitch, frame - 1] if frame > 0 else False
+            is_offset = offsets[pitch, frame] > 0.5
+            is_started = pitch in pitch_start_frame
+
+            is_active = actives[pitch, frame] > 0.5
+            is_active = is_active and not is_offset
+            is_active = is_active or is_onset
+
+            if is_onset and not is_started:
+                start_note(pitch, frame)
+            elif is_onset and is_started and not is_previous_onset:
+                end_note(pitch, frame)
+                start_note(pitch, frame)
+            elif not is_active and is_started:
+                end_note(pitch, frame)
+
+    for pitch in list(pitch_start_frame.keys()):
+        end_note(pitch, actives.shape[1])
+
+    return {
+        "pitches": np.array([note[0] for note in notes], dtype=np.int8),
+        "intervals": np.array([(note[1], note[2]) for note in notes], dtype=np.float32),
+        "velocities": np.array([note[3] for note in notes], dtype=np.int8),
+    }

@@ -71,4 +71,15 @@ class Dataset(torch.utils.data.Dataset):
             spec = utils.audio_to_spec(audio)
             data["spec"] = torch.from_numpy(spec)
 
+        if self.__pianoroll:
+            pianoroll = utils.notesequence_to_pianoroll(
+                pitches, intervals, velocities, velocity_max
+            )
+            data_pianoroll = {}
+            data_pianoroll["actives"] = torch.from_numpy(pianoroll["actives"])
+            data_pianoroll["onsets"] = torch.from_numpy(pianoroll["onsets"])
+            data_pianoroll["offsets"] = torch.from_numpy(pianoroll["offsets"])
+            data_pianoroll["velocities"] = torch.from_numpy(pianoroll["velocities"])
+            data["pianoroll"] = data_pianoroll
+
         return data
