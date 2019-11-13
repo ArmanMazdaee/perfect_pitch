@@ -1,3 +1,5 @@
+import math
+
 import torch
 import h5py
 
@@ -11,6 +13,7 @@ class Dataset(torch.utils.data.Dataset):
         path,
         audio=False,
         spec=False,
+        spec_length=False,
         velocity_min=False,
         velocity_max=False,
         notesequence=False,
@@ -20,6 +23,7 @@ class Dataset(torch.utils.data.Dataset):
         self.__path = path
         self.__audio = audio
         self.__spec = spec
+        self.__spec_length = spec_length
         self.__velocity_min = velocity_min
         self.__velocity_max = velocity_max
         self.__notesequence = notesequence
@@ -66,6 +70,10 @@ class Dataset(torch.utils.data.Dataset):
             notesequence["intervals"] = torch.from_numpy(intervals)
             notesequence["velocities"] = torch.from_numpy(velocities)
             data["notesequence"] = notesequence
+
+        spec_length = math.ceil(len(audio) / constants.SPEC_HOP_LENGTH)
+        if self.__spec_length:
+            data["spec_length"] = torch.tensor(spec_length)
 
         if self.__spec:
             spec = utils.audio_to_spec(audio)
