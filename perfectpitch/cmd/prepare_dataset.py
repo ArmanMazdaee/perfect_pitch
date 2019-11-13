@@ -37,7 +37,7 @@ def prepare_dataset(input_pattern, output_path):
     with h5py.File(output_path, "w") as f:
         f.attrs["sample_rate"] = constants.SAMPLE_RATE
 
-        for index, example in enumerate(dataset.take(3)):
+        for index, example in enumerate(dataset):
             example_id = example["id"].numpy().decode("utf-8")
 
             audio = audio_io.wav_data_to_samples(
