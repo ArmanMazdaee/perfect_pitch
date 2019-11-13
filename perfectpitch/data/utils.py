@@ -1,6 +1,22 @@
 import operator
 
+import numpy as np
+import librosa
 import mido
+
+from perfectpitch import constants
+
+
+def audio_to_spec(audio):
+    mel = librosa.feature.melspectrogram(
+        audio,
+        constants.SAMPLE_RATE,
+        hop_length=constants.SPEC_HOP_LENGTH,
+        fmin=30.0,
+        n_mels=constants.SPEC_N_BINS,
+        htk=True,
+    )
+    return mel.astype(np.float32)
 
 
 def save_notesequence(path, pitches, intervals, velocities):

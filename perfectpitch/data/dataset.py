@@ -2,6 +2,7 @@ import torch
 import h5py
 
 from perfectpitch import constants
+from perfectpitch.data import utils
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -65,5 +66,9 @@ class Dataset(torch.utils.data.Dataset):
             notesequence["intervals"] = torch.from_numpy(intervals)
             notesequence["velocities"] = torch.from_numpy(velocities)
             data["notesequence"] = notesequence
+
+        if self.__spec:
+            spec = utils.audio_to_spec(audio)
+            data["spec"] = torch.from_numpy(spec)
 
         return data
