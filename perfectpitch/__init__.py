@@ -1,2 +1,9 @@
+from perfectpitch import cmd
+
+
 def main():
-    print("perfect pitch")
+    cmd.run()
+
+
+if __name__ == "__main__":
+    main()
