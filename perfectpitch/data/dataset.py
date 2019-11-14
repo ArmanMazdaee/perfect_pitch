@@ -1,10 +1,17 @@
-import math
-
+import numpy as np
 import torch
 import h5py
 
 from perfectpitch import constants
 from perfectpitch.data import utils
+
+
+def _set_length(tensor, length):
+    if tensor.shape[1] > length:
+        return tensor[:, :length]
+    elif tensor.shape[1] < length:
+        return np.pad(tensor, [(0, 0), (0, length - tensor.shape[1])])
+    return tensor
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -71,7 +78,7 @@ class Dataset(torch.utils.data.Dataset):
             notesequence["velocities"] = torch.from_numpy(velocities)
             data["notesequence"] = notesequence
 
-        spec_length = math.ceil(len(audio) / constants.SPEC_HOP_LENGTH)
+        spec_length = int(len(audio) / constants.SPEC_HOP_LENGTH) + 1
         if self.__spec_length:
             data["spec_length"] = torch.tensor(spec_length)
 
@@ -83,11 +90,11 @@ class Dataset(torch.utils.data.Dataset):
             pianoroll = utils.notesequence_to_pianoroll(
                 pitches, intervals, velocities, velocity_max
             )
-            data_pianoroll = {}
-            data_pianoroll["actives"] = torch.from_numpy(pianoroll["actives"])
-            data_pianoroll["onsets"] = torch.from_numpy(pianoroll["onsets"])
-            data_pianoroll["offsets"] = torch.from_numpy(pianoroll["offsets"])
-            data_pianoroll["velocities"] = torch.from_numpy(pianoroll["velocities"])
-            data["pianoroll"] = data_pianoroll
+            if self.__pad_or_truncate_pianoroll:
+                for key, value in pianoroll.items():
+                    pianoroll[key] = _set_length(value, spec_length)
+            data["pianoroll"] = {
+                key: torch.from_numpy(value) for key, value in pianoroll.items()
+            }
 
         return data
