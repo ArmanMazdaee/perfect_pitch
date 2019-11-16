@@ -17,8 +17,9 @@ setup(
         "h5py>=2.8.0,<3.0.0",
         "mido>=1.2.0,<2.0.0",
         "torch>=1.3.0,<2.0.0",
-        "librosa>=0.6.0,<0.7.0",
+        "librosa>=0.7.0,<0.8.0",
         "mir_eval>=0.5.0,<0.6.0",
+        "tqdm>=4.38.0,<5.0.0",
     ],
     extras_require={"prepare_dataset": ["magenta>=1.1.0,<2.0.0"]},
 )
