@@ -39,6 +39,14 @@ def _get_pianoroll_weight(pianoroll):
     }
 
 
+def _numpy_to_pytorch(data):
+    if isinstance(data, dict):
+        return {key: _numpy_to_pytorch(value) for key, value in data.items()}
+    elif isinstance(data, np.ndarray):
+        return torch.from_numpy(data)
+    raise TypeError(f"{type(data)} is not supported")
+
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -90,28 +98,27 @@ class Dataset(torch.utils.data.Dataset):
 
         data = {}
         if self.__audio:
-            data["audio"] = torch.from_numpy(audio)
+            data["audio"] = audio
 
         if self.__velocity_min:
-            data["velocity_min"] = torch.from_numpy(velocity_min)
+            data["velocity_min"] = velocity_min
 
         if self.__velocity_max:
-            data["velocity_max"] = torch.from_numpy(velocity_max)
+            data["velocity_max"] = velocity_max
 
         if self.__notesequence:
             notesequence = {}
-            notesequence["pitches"] = torch.from_numpy(pitches)
-            notesequence["intervals"] = torch.from_numpy(intervals)
-            notesequence["velocities"] = torch.from_numpy(velocities)
+            notesequence["pitches"] = pitches
+            notesequence["intervals"] = intervals
+            notesequence["velocities"] = velocities
             data["notesequence"] = notesequence
+
+        if self.__spec:
+            data["spec"] = utils.audio_to_spec(audio)
 
         spec_length = int(len(audio) / constants.SPEC_HOP_LENGTH) + 1
         if self.__spec_length:
-            data["spec_length"] = torch.tensor(spec_length)
-
-        if self.__spec:
-            spec = utils.audio_to_spec(audio)
-            data["spec"] = torch.from_numpy(spec)
+            data["spec_length"] = np.array(spec_length)
 
         if self.__pianoroll or self.__pianoroll_weight:
             pianoroll = utils.notesequence_to_pianoroll(
@@ -123,14 +130,8 @@ class Dataset(torch.utils.data.Dataset):
                     for key, value in pianoroll.items()
                 }
             if self.__pianoroll:
-                data["pianoroll"] = {
-                    key: torch.from_numpy(value) for key, value in pianoroll.items()
-                }
+                data["pianoroll"] = pianoroll
             if self.__pianoroll_weight:
-                pianoroll_weight = _get_pianoroll_weight(pianoroll)
-                data["pianoroll_weight"] = {
-                    key: torch.from_numpy(value)
-                    for key, value in pianoroll_weight.items()
-                }
+                data["pianoroll_weight"] = _get_pianoroll_weight(pianoroll)
 
-        return data
+        return _numpy_to_pytorch(data)
