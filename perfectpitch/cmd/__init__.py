@@ -72,6 +72,13 @@ def run():
         help="Path of the validation dataset",
         dest="validation_path",
     )
+    train_acoustic_parser.add_argument(
+        "--gpu",
+        "-g",
+        action="store_true",
+        help="Use gpu for training the model",
+        dest="use_gpu",
+    )
 
     args = parser.parse_args()
     command = args.command.replace("-", "_")
