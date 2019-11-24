@@ -30,8 +30,10 @@ def _binary_cross_entropy_with_logits(input, target, weight):
 
 def _batch_criterion(data, model, device):
     spec = data["spec"].to(device)
-    pianoroll = data["pianoroll"].to(device)
-    pianoroll_weight = data["pianoroll_weight"].to(device)
+    pianoroll = {key: value.to(device) for key, value in data["pianoroll"].items()}
+    pianoroll_weight = {
+        key: value.to(device) for key, value in data["pianoroll_weight"].items()
+    }
 
     prediction = model(spec)
     onsets_loss = _binary_cross_entropy_with_logits(
