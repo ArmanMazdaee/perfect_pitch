@@ -28,10 +28,10 @@ def _binary_cross_entropy_with_logits(input, target, weight):
     return (loss * weight).sum() / weight.sum()
 
 
-def _batch_criterion(data, model):
-    spec = data["spec"].to(model.device)
-    pianoroll = data["pianoroll"].to(model.device)
-    pianoroll_weight = data["pianoroll_weight"].to(model.device)
+def _batch_criterion(data, model, device):
+    spec = data["spec"].to(device)
+    pianoroll = data["pianoroll"].to(device)
+    pianoroll_weight = data["pianoroll_weight"].to(device)
 
     prediction = model(spec)
     onsets_loss = _binary_cross_entropy_with_logits(
@@ -47,10 +47,11 @@ def _batch_criterion(data, model):
 def train_acoustic(train_path, validation_path, use_gpu):
     train_loader = _get_dataset(train_path, shuffle=True)
     validation_loader = _get_dataset(validation_path, shuffle=False)
+    device = torch.device("cuda:0" if use_gpu else "cpu")
 
     model = Acoustic()
     if use_gpu:
-        model.cuda()
+        model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0006)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.98)
@@ -62,7 +63,7 @@ def train_acoustic(train_path, validation_path, use_gpu):
             train_loader, desc=f"training epoch {epoch}", position=0, leave=True
         ):
             optimizer.zero_grad()
-            loss = _batch_criterion(data, model)
+            loss = _batch_criterion(data, model, device)
             loss["total_loss"].backward()
             optimizer.step()
             scheduler.step()
@@ -78,7 +79,7 @@ def train_acoustic(train_path, validation_path, use_gpu):
                 position=0,
                 leave=True,
             ):
-                loss = _batch_criterion(data, model)
+                loss = _batch_criterion(data, model, device)
                 for key in loss.keys():
                     validation_loss[key] += loss[key].item()
 
