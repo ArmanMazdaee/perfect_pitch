@@ -53,6 +53,26 @@ def run():
         dest="output_path",
     )
 
+    train_acoustic_parser = subparsers.add_parser(
+        "train-acoustic",
+        help="Train the acoustic model",
+        description="Train the acoustic model",
+    )
+    train_acoustic_parser.add_argument(
+        "--train-dataset",
+        "-t",
+        required=True,
+        help="Path of the training dataset",
+        dest="train_path",
+    )
+    train_acoustic_parser.add_argument(
+        "--validation-dataset",
+        "-v",
+        required=True,
+        help="Path of the validation dataset",
+        dest="validation_path",
+    )
+
     args = parser.parse_args()
     command = args.command.replace("-", "_")
     module = importlib.import_module("perfectpitch.cmd." + command)
