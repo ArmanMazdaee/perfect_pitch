@@ -63,7 +63,7 @@ class _Conv2dStack(torch.nn.Sequential):
 class _SequentialStack(TemporalConvNet):
     def __init__(self, in_channels, out_channels, dropout):
         super().__init__(
-            in_channels, out_channels, [64] * 4, 3, "same", dropout,
+            in_channels, out_channels, [64] * 3, 3, "same", dropout,
         )
 
 
