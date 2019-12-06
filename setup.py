@@ -21,5 +21,5 @@ setup(
         "librosa>=0.7.0,<0.8.0",
         "mir_eval>=0.5.0,<0.6.0",
     ],
-    extras_require={"prepare_dataset": ["magenta>=1.1.0,<2.0.0"]},
+    extras_require={"prepare_dataset": ["magenta>=1.1.0,<1.2.0"]},
 )
