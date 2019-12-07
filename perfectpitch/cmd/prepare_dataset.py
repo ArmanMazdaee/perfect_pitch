@@ -16,6 +16,7 @@ except ImportError:
     sys.exit("You need to install perfectpitch with [prepare_dataset]")
 
 from perfectpitch import constants
+from perfectpitch.data.utils import audio_to_spec
 
 
 def _parse_example(example_proto):
@@ -36,6 +37,7 @@ def prepare_dataset(input_pattern, output_path):
 
     with h5py.File(output_path, "w") as f:
         f.attrs["sample_rate"] = constants.SAMPLE_RATE
+        f.attrs["spec_hop_length"] = constants.SPEC_HOP_LENGTH
 
         for index, example in enumerate(dataset):
             example_id = example["id"].numpy().decode("utf-8")
@@ -43,6 +45,7 @@ def prepare_dataset(input_pattern, output_path):
             audio = audio_io.wav_data_to_samples(
                 example["audio"].numpy(), constants.SAMPLE_RATE
             )
+            spec = audio_to_spec(audio)
 
             velocity_range = music_pb2.VelocityRange.FromString(
                 example["velocity_range"].numpy()
@@ -64,6 +67,7 @@ def prepare_dataset(input_pattern, output_path):
             group = f.create_group("{:09}".format(index))
             group.attrs["id"] = example_id
             group.create_dataset("audio", data=audio, dtype="float32")
+            group.create_dataset("spec", data=spec, dtype="float32")
             group.create_dataset("velocity_min", data=velocity_min, dtype="int8")
             group.create_dataset("velocity_max", data=velocity_max, dtype="int8")
             group.create_dataset("pitches", data=pitches, dtype="int8")

@@ -74,9 +74,9 @@ class Dataset(torch.utils.data.Dataset):
 
         with h5py.File(path, "r") as f:
             if f.attrs["sample_rate"] != constants.SAMPLE_RATE:
-                raise ValueError(
-                    "dataset sample rate does not match with the model sample rate"
-                )
+                raise ValueError("dataset sample rate does not match")
+            if f.attrs["spec_hop_length"] != constants.SPEC_HOP_LENGTH:
+                raise ValueError("dataset spec hop length does not match")
 
             self.__examples = sorted(f.keys())
 
@@ -90,6 +90,7 @@ class Dataset(torch.utils.data.Dataset):
         with h5py.File(self.__path, "r") as f:
             example = f[self.__examples[index]]
             audio = example["audio"][...]
+            spec = example["spec"][...]
             velocity_min = example["velocity_min"][...]
             velocity_max = example["velocity_max"][...]
             pitches = example["pitches"][...]
@@ -99,6 +100,9 @@ class Dataset(torch.utils.data.Dataset):
         data = {}
         if self.__audio:
             data["audio"] = audio
+
+        if self.__spec:
+            data["spec"] = spec
 
         if self.__velocity_min:
             data["velocity_min"] = velocity_min
@@ -113,10 +117,7 @@ class Dataset(torch.utils.data.Dataset):
             notesequence["velocities"] = velocities
             data["notesequence"] = notesequence
 
-        if self.__spec:
-            data["spec"] = utils.audio_to_spec(audio)
-
-        spec_length = int(len(audio) / constants.SPEC_HOP_LENGTH) + 1
+        spec_length = spec.shape[1]
         if self.__spec_length:
             data["spec_length"] = np.array(spec_length)
 
