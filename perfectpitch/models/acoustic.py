@@ -1,7 +1,6 @@
 import math
 
 import torch
-import pytorch_lightning as pl
 
 from perfectpitch import constants
 from perfectpitch.data.dataset import Dataset
@@ -61,8 +60,8 @@ class _Conv2dStack(torch.nn.Sequential):
         return x
 
 
-class Acoustic(pl.LightningModule):
-    def __init__(self, train_path=None, val_path=None):
+class Acoustic(torch.nn.Module):
+    def __init__(self):
         super().__init__()
         in_channels = constants.SPEC_N_BINS
         out_channels = constants.MAX_PITCH - constants.MIN_PITCH + 1
@@ -70,8 +69,6 @@ class Acoustic(pl.LightningModule):
         self.onsets_stack = _Conv2dStack(in_channels, out_channels, dropout)
         self.offsets_stack = _Conv2dStack(in_channels, out_channels, dropout)
         self.actives_stack = _Conv2dStack(in_channels, out_channels, dropout)
-        self.train_path = train_path
-        self.val_path = val_path
 
     def forward(self, spec):
         pianoroll = {}
@@ -79,72 +76,3 @@ class Acoustic(pl.LightningModule):
         pianoroll["offsets"] = self.offsets_stack(spec)
         pianoroll["actives"] = self.actives_stack(spec)
         return pianoroll
-
-    def loss(self, prediction, label, weight):
-        onsets_loss = _binary_cross_entropy_with_logits(
-            prediction["onsets"], label["onset"], weight["onset"],
-        )
-        offsets_loss = _binary_cross_entropy_with_logits(
-            prediction["offsets"], label["offsets"], weight["offsets"],
-        )
-        actives_loss = _binary_cross_entropy_with_logits(
-            prediction["actives"], label["actives"], weight["actives"],
-        )
-        total_loss = (onsets_loss + offsets_loss + actives_loss) / 3
-        return {
-            "onsets_loss": onsets_loss,
-            "offsets_loss": offsets_loss,
-            "actives_loss": actives_loss,
-            "total_loss": total_loss,
-        }
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=0.0006)
-
-    @pl.data_loader
-    def train_dataloader(self):
-        if self.train_path is None:
-            return None
-        trainset = Dataset(
-            self.train_path, spec=True, pianoroll=True, pianoroll_weight=True
-        )
-        return torch.utils.data.DataLoader(
-            trainset,
-            batch_size=32,
-            shuffle=True,
-            num_workers=2,
-            collate_fn=padded_collate,
-            drop_last=True,
-        )
-
-    @pl.data_loader
-    def val_dataloader(self):
-        if self.val_path is None:
-            return None
-        valset = Dataset(
-            self.val_path, spec=True, pianoroll=True, pianoroll_weight=True
-        )
-        return torch.utils.data.DataLoader(
-            valset,
-            batch_size=32,
-            shuffle=False,
-            num_workers=2,
-            collate_fn=padded_collate,
-            drop_last=True,
-        )
-
-    def training_step(self, batch, batch_nb):
-        spec = batch["spec"]
-        pianoroll = batch["pianoroll"]
-        pianoroll_weight = batch["pianoroll_weight"]
-        prediction = self.forward(spec)
-        loss = self.loss(prediction, pianoroll, pianoroll_weight)
-        return {"loss": loss["total_loss"], "log": loss}
-
-    def validation_step(self, batch, batch_nb):
-        spec = batch["spec"]
-        pianoroll = batch["pianoroll"]
-        pianoroll_weight = batch["pianoroll_weight"]
-        prediction = self.forward(spec)
-        loss = self.loss(prediction, pianoroll, pianoroll_weight)
-        return loss
