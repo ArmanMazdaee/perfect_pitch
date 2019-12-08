@@ -10,7 +10,6 @@ from perfectpitch.models.acoustic import Acoustic
 
 def _get_dataset(path, shuffle):
     dataset = Dataset(path, spec=True, pianoroll=True, pianoroll_weight=True)
-    dataset = torch.utils.data.Subset(dataset, list(range(16)))
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=8,
