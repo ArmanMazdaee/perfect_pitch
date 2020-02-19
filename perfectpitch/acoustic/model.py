@@ -3,8 +3,6 @@ import math
 import torch
 
 from perfectpitch import constants
-from perfectpitch.data.dataset import Dataset
-from perfectpitch.data.collate import padded_collate
 
 
 def _binary_cross_entropy_with_logits(input, target, weight):
