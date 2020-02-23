@@ -97,10 +97,11 @@ def save_notesequence(path, pitches, intervals, velocities):
     midi.save(path)
 
 
-def notesequence_to_pianoroll(pitches, intervals, velocities, velocity_max):
+def notesequence_to_pianoroll(pitches, intervals, velocities):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
     num_frames = int(intervals.max() / frame_duration) + 1
     num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
+    velocity_max = velocities.max().tolist()
 
     notes = sorted(
         [
