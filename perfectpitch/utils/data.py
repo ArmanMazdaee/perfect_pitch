@@ -19,6 +19,57 @@ def audio_to_spec(audio):
     return mel.astype(np.float32)
 
 
+def load_notesequence(path):
+    midi = mido.MidiFile(path)
+    if midi.type != 0:
+        raise NotImplementedError("midi file type is not 0")
+    notes = []
+    actived = {}
+    sustain = False
+    time = 0
+    for event in midi:
+        time += event.time
+        if event.type == "note_on":
+            pitch = event.note
+            if pitch in actived:
+                onset = actived[pitch][0]
+                offset = time
+                velocity = actived[pitch][2]
+                notes.append((pitch, onset, offset, velocity))
+            actived[pitch] = (time, None, event.velocity)
+        elif event.type == "note_off":
+            pitch = event.note
+            onset = actived[pitch][0]
+            offset = time
+            velocity = actived[pitch][2]
+            actived[pitch] = (onset, offset, velocity)
+            if not sustain:
+                notes.append((pitch, onset, offset, velocity))
+                del actived[pitch]
+        elif (
+            event.type == "control_change" and event.control == 64 and event.value >= 64
+        ):
+            sustain = True
+        elif (
+            event.type == "control_change" and event.control == 64 and event.value < 64
+        ):
+            sustain = False
+            pitches = [p for p, v in actived.items() if v[1] is not None]
+            for pitch in pitches:
+                onset, offset, velocity = actived[pitch]
+                notes.append((pitch, onset, offset, velocity))
+                del actived[pitch]
+
+    for pitch, (onset, _, velocity) in actived.items():
+        notes.append((pitch, onset, time, velocity))
+
+    return {
+        "pitches": np.array([note[0] for note in notes], dtype=np.int8),
+        "intervals": np.array([(note[1], note[2]) for note in notes], dtype=np.float32),
+        "velocities": np.array([note[3] for note in notes], dtype=np.int8),
+    }
+
+
 def save_notesequence(path, pitches, intervals, velocities):
     midi = mido.MidiFile()
     track = mido.MidiTrack()
