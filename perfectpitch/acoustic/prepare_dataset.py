@@ -26,6 +26,25 @@ def _set_length(tensor, length):
     return tensor
 
 
+def _create_samples(spec, pianoroll, min_length, max_length):
+    if min_length is None:
+        min_length = 0
+    if max_length is None:
+        max_length = spec.shape[1]
+
+    for start_index in range(0, spec.shape[1], max_length):
+        end_index = min(spec.shape[1], start_index + max_length)
+        if end_index - start_index < min_length:
+            break
+        yield {
+            "spec": spec[:, start_index:end_index],
+            "pianoroll_actives": pianoroll["actives"][:, start_index:end_index],
+            "pianoroll_onsets": pianoroll["onsets"][:, start_index:end_index],
+            "pianoroll_offsets": pianoroll["offsets"][:, start_index:end_index],
+            "pianoroll_velocities": pianoroll["velocities"][:, start_index:end_index],
+        }
+
+
 def prepare_dataset(input_path, output_path):
     splits_dirs = {
         "train": [
@@ -56,6 +75,8 @@ def prepare_dataset(input_path, output_path):
     ]
 
     for split, wav_filenames in split_wav_filenames.items():
+        sample_dir = os.path.join(output_path, split)
+        os.makedirs(sample_dir, exist_ok=True)
         for wav_filename in tqdm(wav_filenames, desc=f"preparing {split} set"):
             audio, _ = librosa.load(wav_filename, sr=constants.SAMPLE_RATE)
             spec = audio_to_spec(audio)
@@ -69,14 +90,15 @@ def prepare_dataset(input_path, output_path):
             )
             pianoroll = {k: _set_length(v, spec.shape[1]) for k, v in pianoroll.items()}
 
-            sample_name = os.path.splitext(os.path.basename(wav_filename))[0]
-            sample_filename = os.path.join(output_path, split, sample_name + ".npz")
-            os.makedirs(os.path.dirname(sample_filename), exist_ok=True)
-            np.savez(
-                sample_filename,
-                spec=spec,
-                pianoroll_actives=pianoroll["actives"],
-                pianoroll_onsets=pianoroll["onsets"],
-                pianoroll_offsets=pianoroll["offsets"],
-                pianoroll_velocities=pianoroll["velocities"],
-            )
+            base_name = os.path.splitext(os.path.basename(wav_filename))[0]
+            for part, sample in enumerate(
+                _create_samples(
+                    spec,
+                    pianoroll,
+                    constants.ACOUSTIC_TRAIN_MIN_LENGTH if split == "train" else None,
+                    constants.ACOUSTIC_TRAIN_MAX_LENGTH if split == "train" else None,
+                )
+            ):
+                np.savez(
+                    os.path.join(sample_dir, f"{base_name}-part{part:03}.npz"), **sample
+                )
