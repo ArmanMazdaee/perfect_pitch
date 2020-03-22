@@ -13,8 +13,8 @@ setup(
     entry_points={"console_scripts": ["perfectpitch = perfectpitch:main"]},
     python_requires=">=3.6,<4.0",
     install_requires=[
+        "tensorflow>=2.1.0,<3.0.0",
         "numpy>=1.18.0,<1.19.0",
-        "torch>=1.4.0,<2.0.0",
         "mido>=1.2.0,<2.0.0",
         "librosa>=0.7.0,<0.8.0",
         "mir_eval>=0.5.0,<0.6.0",
