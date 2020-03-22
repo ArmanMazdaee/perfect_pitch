@@ -16,7 +16,7 @@ def audio_to_spec(audio):
         n_mels=constants.SPEC_N_BINS,
         htk=True,
     )
-    return mel.astype(np.float32)
+    return mel.astype(np.float32).T
 
 
 def load_notesequence(path):
@@ -113,7 +113,7 @@ def notesequence_to_pianoroll(pitches, intervals, velocities):
         key=operator.itemgetter(1),
     )
 
-    active_frames = np.zeros([num_pitches, num_frames], dtype=np.float32)
+    active_frames = np.zeros([num_frames, num_pitches], dtype=np.float32)
     onset_frames = np.zeros_like(active_frames)
     offset_frames = np.zeros_like(active_frames)
     velocity_frames = np.zeros_like(active_frames)
@@ -129,10 +129,10 @@ def notesequence_to_pianoroll(pitches, intervals, velocities):
         if start_frame == end_frame:
             continue
 
-        active_frames[pitch_index, start_frame:end_frame] = 1
-        onset_frames[pitch_index, start_frame] = 1
-        offset_frames[pitch_index, end_frame] = 1
-        velocity_frames[pitch_index, start_frame:end_frame] = velocity / velocity_max
+        active_frames[start_frame:end_frame, pitch_index] = 1
+        onset_frames[start_frame, pitch_index] = 1
+        offset_frames[end_frame, pitch_index] = 1
+        velocity_frames[start_frame:end_frame, pitch_index] = velocity / velocity_max
 
     return {
         "actives": active_frames,
@@ -147,15 +147,15 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
     notes = []
     start_frame = None
 
-    for pitch in range(actives.shape[0]):
+    for pitch in range(actives.shape[1]):
         start_frame = None
-        for frame in range(actives.shape[1]):
-            is_onset = onsets[pitch, frame] >= 0.5
-            is_previous_onset = onsets[pitch, frame - 1] >= 0.5 if frame > 0 else False
-            is_offset = offsets[pitch, frame] >= 0.5
+        for frame in range(actives.shape[0]):
+            is_onset = onsets[frame, pitch] >= 0.5
+            is_previous_onset = onsets[frame - 1, pitch] >= 0.5 if frame > 0 else False
+            is_offset = offsets[frame, pitch] >= 0.5
             is_started = start_frame is not None
 
-            is_active = actives[pitch, frame] >= 0.5
+            is_active = actives[frame, pitch] >= 0.5
             is_active = is_active and not is_offset
             is_active = is_active or is_onset
 
@@ -167,7 +167,7 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
                         pitch + constants.MIN_PITCH,
                         start_frame * frame_duration,
                         frame * frame_duration,
-                        np.clip(velocities[pitch, start_frame], 0, 1) * 80 + 10,
+                        np.clip(velocities[start_frame, pitch], 0, 1) * 80 + 10,
                     )
                 )
                 start_frame = frame
@@ -177,7 +177,7 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
                         pitch + constants.MIN_PITCH,
                         start_frame * frame_duration,
                         frame * frame_duration,
-                        np.clip(velocities[pitch, start_frame], 0, 1) * 80 + 10,
+                        np.clip(velocities[start_frame, pitch], 0, 1) * 80 + 10,
                     )
                 )
                 start_frame = None
@@ -186,8 +186,8 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
                 (
                     pitch + constants.MIN_PITCH,
                     start_frame * frame_duration,
-                    actives.shape[1] * frame_duration,
-                    np.clip(velocities[pitch, start_frame], 0, 1) * 80 + 10,
+                    actives.shape[0] * frame_duration,
+                    np.clip(velocities[start_frame, pitch], 0, 1) * 80 + 10,
                 )
             )
 
