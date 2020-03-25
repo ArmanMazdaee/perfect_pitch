@@ -1,5 +1,7 @@
 import argparse
 
+from perfectpitch.dataset.maps import convert_maps
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -8,30 +10,26 @@ def main():
     subparsers = parser.add_subparsers(title="command")
     subparsers.required = True
 
-    acoustic_dataset_parser = subparsers.add_parser(
-        "acoustic-dataset",
-        help="Prepare the MAPS dataset for the acoustic model",
+    convert_maps_parser = subparsers.add_parser(
+        "convert-maps",
+        help="Convert the MAPS dataset for the perfectpitch",
         description=(
-            "Preparing the MAPS datasets for training and validating the acoustic model"
+            "Convert the MAPS datasets to a format which is useable by perfectpitch"
         ),
     )
-    acoustic_dataset_parser.set_defaults(
-        func=lambda input_path, output_path: print(
-            "acoustic-dataset", input_path, output_path
-        )
-    )
-    acoustic_dataset_parser.add_argument(
+    convert_maps_parser.set_defaults(func=convert_maps)
+    convert_maps_parser.add_argument(
         "--input",
         "-i",
         required=True,
-        help="Path of the MAPS dataset",
+        help="Path of the extracted MAPS dataset",
         dest="input_path",
     )
-    acoustic_dataset_parser.add_argument(
+    convert_maps_parser.add_argument(
         "--output",
         "-o",
         required=True,
-        help="Path of the prepared dataset",
+        help="Path of the converted dataset",
         dest="output_path",
     )
 
