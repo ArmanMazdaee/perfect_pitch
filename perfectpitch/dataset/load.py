@@ -42,8 +42,20 @@ def _parse_sample(serialized):
     }
 
 
-def load_dataset(path, split):
-    filename = os.path.join(path, split + ".tfrecord")
-    dataset = tf.data.TFRecordDataset(filename)
-    dataset = dataset.map(_parse_sample)
+def load_dataset(path, split, ordered=None):
+    if ordered is None and split == "train":
+        ordered = True
+    else:
+        ordered = False
+
+    glob = os.path.join(path, f"{split}-*.tfrecord")
+    filenames = sorted(tf.io.gfile.glob(glob))
+
+    dataset = tf.data.TFRecordDataset(
+        filenames, num_parallel_reads=1 if ordered else len(filenames)
+    )
+    options = tf.data.Options()
+    options.experimental_deterministic = ordered
+    dataset = dataset.with_options(options)
+    dataset = dataset.map(_parse_sample, tf.data.experimental.AUTOTUNE)
     return dataset

@@ -1,4 +1,5 @@
 import os
+import contextlib
 
 import tensorflow as tf
 from tqdm import tqdm
@@ -67,7 +68,9 @@ def _serialize_sample(sample):
     return example.SerializeToString()
 
 
-def convert_dataset(names, wav_filenames, midi_filenames, output_path, split):
+def convert_dataset(
+    names, wav_filenames, midi_filenames, output_path, split, num_shards
+):
     dataset = tf.data.Dataset.from_tensor_slices(
         {"name": names, "wav_filename": wav_filenames, "midi_filename": midi_filenames}
     )
@@ -75,6 +78,17 @@ def convert_dataset(names, wav_filenames, midi_filenames, output_path, split):
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     os.makedirs(output_path, exist_ok=True)
-    with tf.io.TFRecordWriter(os.path.join(output_path, split + ".tfrecord")) as writer:
-        for sample in tqdm(dataset, desc=f"converting {split} set", total=len(names)):
-            writer.write(_serialize_sample(sample))
+    with contextlib.ExitStack() as stack:
+        filenames = [
+            os.path.join(output_path, f"{split}-{index:02}.tfrecord")
+            for index in range(1, num_shards + 1)
+        ]
+        writers = [
+            stack.enter_context(tf.io.TFRecordWriter(filename))
+            for filename in filenames
+        ]
+
+        for index, sample in enumerate(
+            tqdm(dataset, desc=f"converting {split} set", total=len(names))
+        ):
+            writers[index % num_shards].write(_serialize_sample(sample))

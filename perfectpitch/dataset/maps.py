@@ -1,8 +1,23 @@
 import os
 import re
-from glob import glob
+
+import tensorflow as tf
 
 from .convert import convert_dataset
+
+
+TRAIN_DIRS = [
+    "AkPnBcht/MUS",
+    "AkPnBsdf/MUS",
+    "AkPnCGdD/MUS",
+    "AkPnStgb/MUS",
+    "SptkBGAm/MUS",
+    "SptkBGCl/MUS",
+    "StbgTGd2/MUS",
+]
+VALIDATION_DIRS = ["ENSTDkCl/MUS", "ENSTDkAm/MUS"]
+TRAIN_NUM_SHARDS = 7
+VALIDATION_NUM_SHARDS = 2
 
 
 def _id_from_filename(filename):
@@ -11,23 +26,14 @@ def _id_from_filename(filename):
 
 def convert_maps(input_path, output_path):
     splits_dirs = {
-        "train": [
-            "AkPnBcht/MUS",
-            "AkPnBsdf/MUS",
-            "AkPnCGdD/MUS",
-            "AkPnStgb/MUS",
-            "SptkBGAm/MUS",
-            "SptkBGCl/MUS",
-            "StbgTGd2/MUS",
-        ],
-        "validation": ["ENSTDkCl/MUS", "ENSTDkAm/MUS"],
+        "train": TRAIN_DIRS,
+        "validation": VALIDATION_DIRS,
     }
 
     split_wav_filenames = {}
     for split, dirs in splits_dirs.items():
         wav_globs = [os.path.join(input_path, d, "*.wav") for d in dirs]
-        wav_filenames = [glob(g) for g in wav_globs]
-        split_wav_filenames[split] = sorted([f for d in wav_filenames for f in d])
+        split_wav_filenames[split] = sorted(tf.io.gfile.glob(wav_globs))
 
     validation_ids = set(
         _id_from_filename(f) for f in split_wav_filenames["validation"]
@@ -48,11 +54,14 @@ def convert_maps(input_path, output_path):
         for split, wav_filenames in split_wav_filenames.items()
     }
 
-    for split in ["train", "validation"]:
+    split_num_shards = {"train": TRAIN_NUM_SHARDS, "validation": VALIDATION_NUM_SHARDS}
+
+    for split, num_shards in split_num_shards.items():
         convert_dataset(
             split_names[split],
             split_wav_filenames[split],
             split_midi_filenames[split],
             output_path,
             split,
+            num_shards,
         )
