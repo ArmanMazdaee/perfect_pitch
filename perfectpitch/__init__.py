@@ -1,6 +1,7 @@
 import argparse
 
 from perfectpitch.dataset.maps import convert_maps
+from perfectpitch.dataset.maestro import convert_maestro
 
 
 def main():
@@ -26,6 +27,29 @@ def main():
         dest="input_path",
     )
     convert_maps_parser.add_argument(
+        "--output",
+        "-o",
+        required=True,
+        help="Path of the converted dataset",
+        dest="output_path",
+    )
+
+    convert_maestro_parser = subparsers.add_parser(
+        "convert-maestro",
+        help="Convert the MAESTRO dataset for the perfectpitch",
+        description=(
+            "Convert the MAESTRO datasets to a format which is useable by perfectpitch"
+        ),
+    )
+    convert_maestro_parser.set_defaults(func=convert_maestro)
+    convert_maestro_parser.add_argument(
+        "--input",
+        "-i",
+        required=True,
+        help="Path of the extracted MAESTRO dataset",
+        dest="input_path",
+    )
+    convert_maestro_parser.add_argument(
         "--output",
         "-o",
         required=True,
