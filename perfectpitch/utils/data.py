@@ -1,5 +1,6 @@
 import operator
 
+import tensorflow as tf
 import numpy as np
 import librosa
 import mido
@@ -8,7 +9,8 @@ from perfectpitch import constants
 
 
 def load_spec(path):
-    audio, _ = librosa.load(path, constants.SAMPLE_RATE)
+    with tf.io.gfile.GFile(path, "rb") as file:
+        audio, _ = librosa.load(file, constants.SAMPLE_RATE)
     mel = librosa.feature.melspectrogram(
         audio,
         constants.SAMPLE_RATE,
@@ -21,9 +23,8 @@ def load_spec(path):
 
 
 def load_notesequence(path):
-    midi = mido.MidiFile(path)
-    if midi.type != 0:
-        raise NotImplementedError("midi file type is not 0")
+    with tf.io.gfile.GFile(path, "rb") as file:
+        midi = mido.MidiFile(file=file)
 
     notes = []
     actived = {}
@@ -95,7 +96,8 @@ def save_notesequence(path, pitches, intervals, velocities):
         track.append(message.copy(time=tick))
         time = message.time
 
-    midi.save(path)
+    with tf.io.gfile.GFile(path, "wb") as file:
+        midi.save(file=file)
 
 
 def notesequence_to_pianoroll(pitches, intervals, velocities):

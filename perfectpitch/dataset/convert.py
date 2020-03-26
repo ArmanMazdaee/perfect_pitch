@@ -77,7 +77,7 @@ def convert_dataset(
     dataset = dataset.map(_load_sample, tf.data.experimental.AUTOTUNE)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    os.makedirs(output_path, exist_ok=True)
+    tf.io.gfile.makedirs(output_path)
     with contextlib.ExitStack() as stack:
         filenames = [
             os.path.join(output_path, f"{split}-{index:02}.tfrecord")
