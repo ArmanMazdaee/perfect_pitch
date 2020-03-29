@@ -148,33 +148,17 @@ def notesequence_to_pianoroll(pitches, intervals, velocities):
 def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
     notes = []
-    start_frame = None
 
     for pitch in range(actives.shape[1]):
         start_frame = None
         for frame in range(actives.shape[0]):
             is_onset = onsets[frame, pitch] >= 0.5
             is_previous_onset = onsets[frame - 1, pitch] >= 0.5 if frame > 0 else False
-            is_offset = offsets[frame, pitch] >= 0.5
-            is_started = start_frame is not None
+            is_offset = offsets[frame, pitch] >= 0.5 or actives[frame, pitch] < 0.5
 
-            is_active = actives[frame, pitch] >= 0.5
-            is_active = is_active and not is_offset
-            is_active = is_active or is_onset
-
-            if is_onset and not is_started:
-                start_frame = frame
-            elif is_onset and is_started and not is_previous_onset:
-                notes.append(
-                    (
-                        pitch + constants.MIN_PITCH,
-                        start_frame * frame_duration,
-                        frame * frame_duration,
-                        np.clip(velocities[start_frame, pitch], 0, 1) * 80 + 10,
-                    )
-                )
-                start_frame = frame
-            elif not is_active and is_started:
+            if (is_offset and start_frame is not None) or (
+                is_onset and start_frame is not None and not is_previous_onset
+            ):
                 notes.append(
                     (
                         pitch + constants.MIN_PITCH,
@@ -184,6 +168,10 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
                     )
                 )
                 start_frame = None
+
+            if is_onset and start_frame is None:
+                start_frame = frame
+
         if start_frame is not None:
             notes.append(
                 (
