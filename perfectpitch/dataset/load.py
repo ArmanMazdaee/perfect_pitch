@@ -44,9 +44,9 @@ def _parse_sample(serialized):
 
 def load_dataset(path, split, ordered=None):
     if ordered is None and split == "train":
-        ordered = True
-    else:
         ordered = False
+    else:
+        ordered = True
 
     glob = os.path.join(path, f"{split}-*.tfrecord")
     filenames = sorted(tf.io.gfile.glob(glob))
