@@ -46,7 +46,7 @@ def load_notesequence(path):
     for index, event in enumerate(events):
         if event.type == "note_on":
             if event.note in actived:
-                raise RuntimeError("note_on for an already actived note: %s" % event)
+                continue
             if sustain and event.note in sustained:
                 onset_event = events[sustained[event.note]]
                 notes.append(
@@ -57,7 +57,7 @@ def load_notesequence(path):
 
         elif event.type == "note_off":
             if event.note not in actived:
-                raise RuntimeError("note_off for an already inactive note")
+                continue
             if sustain:
                 sustained[event.note] = actived[event.note]
             else:
