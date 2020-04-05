@@ -89,6 +89,7 @@ def _preprocess_sample(sample):
     spec = sample["spec"]
     num_frames = tf.shape(spec)[0]
     pianoroll = _create_pianoroll(sample["notesequence"], num_frames)
+    del pianoroll["velocities"]
     return spec, pianoroll
 
 
