@@ -52,7 +52,7 @@ def load_dataset(path, split, ordered=None):
     filenames = sorted(tf.io.gfile.glob(glob))
 
     dataset = tf.data.TFRecordDataset(
-        filenames, num_parallel_reads=1 if ordered else len(filenames)
+        filenames, num_parallel_reads=None if ordered else tf.data.experimental.AUTOTUNE
     )
     options = tf.data.Options()
     options.experimental_deterministic = ordered
