@@ -2,6 +2,7 @@ import argparse
 
 from perfectpitch.dataset.maps import convert_maps
 from perfectpitch.dataset.maestro import convert_maestro
+from perfectpitch.acoustic.train import train as train_acoustic
 
 
 def main():
@@ -58,15 +59,11 @@ def main():
     )
 
     acoustic_train_parser = subparsers.add_parser(
-        "acoustic-train",
+        "train-acoustic",
         help="Train the acoustic model",
         description="Train the acoustic model",
     )
-    acoustic_train_parser.set_defaults(
-        func=lambda dataset_path, use_gpu: print(
-            "acoustic-trian", dataset_path, use_gpu
-        )
-    )
+    acoustic_train_parser.set_defaults(func=train_acoustic)
     acoustic_train_parser.add_argument(
         "--dataset-path",
         "-d",
@@ -75,11 +72,11 @@ def main():
         dest="dataset_path",
     )
     acoustic_train_parser.add_argument(
-        "--gpu",
-        "-g",
-        action="store_true",
-        help="Use gpu for training the model",
-        dest="use_gpu",
+        "--distribute-strategy",
+        "-s",
+        choices=["single", "tpu"],
+        help="Distribute strategy to use for training the model",
+        dest="distribute_strategy",
     )
 
     args = parser.parse_args()
