@@ -18,12 +18,10 @@ def train(dataset_path, distribute_strategy):
         raise ValueError(f"distribute_strategy {distribute_strategy} is unknown")
 
     with strategy.scope():
-        train_data = load_dataset(
-            dataset_path, "train", strategy.num_replicas_in_sync
-        ).take(2)
+        train_data = load_dataset(dataset_path, "train", strategy.num_replicas_in_sync)
         validation_data = load_dataset(
             dataset_path, "validation", strategy.num_replicas_in_sync
-        ).take(2)
+        )
         model = create_model()
         model.fit(
             x=train_data, epochs=2, validation_data=validation_data,
