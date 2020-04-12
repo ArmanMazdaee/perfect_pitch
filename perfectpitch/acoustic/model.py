@@ -1,76 +1,69 @@
-import math
-
-import torch
+import tensorflow as tf
 
 from perfectpitch import constants
 
 
-def _binary_cross_entropy_with_logits(input, target, weight):
-    loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        input, target, reduction="none"
+def _conv2d_stack(x):
+    x = tf.keras.layers.Reshape(target_shape=(-1, x.shape[2], 1))(x)
+
+    x = tf.keras.layers.Conv2D(
+        filters=48, kernel_size=(3, 3), padding="same", activation="relu"
+    )(x)
+    x = tf.keras.layers.LayerNormalization()(x)
+
+    x = tf.keras.layers.Conv2D(
+        filters=48, kernel_size=(3, 3), padding="same", activation="relu"
+    )(x)
+    x = tf.keras.layers.LayerNormalization()(x)
+    x = tf.keras.layers.MaxPool2D(pool_size=(1, 2), padding="same")(x)
+    x = tf.keras.layers.Dropout(rate=0.25)(x)
+
+    x = tf.keras.layers.Conv2D(
+        filters=96, kernel_size=(3, 3), padding="same", activation="relu"
+    )(x)
+    x = tf.keras.layers.LayerNormalization()(x)
+    x = tf.keras.layers.MaxPool2D(pool_size=(1, 2), padding="same")(x)
+    x = tf.keras.layers.Dropout(rate=0.25)(x)
+
+    x = tf.keras.layers.Reshape(target_shape=(-1, x.shape[2] * x.shape[3]))(x)
+    x = tf.keras.layers.Conv1D(filters=768, kernel_size=1)(x)
+    x = tf.keras.layers.Dropout(rate=0.5)(x)
+    return x
+
+
+def create_model():
+    num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
+
+    spec = tf.keras.Input(shape=[None, constants.SPEC_N_BINS])
+    onsets = _conv2d_stack(spec)
+    onsets = tf.keras.layers.Conv1D(filters=num_pitches, kernel_size=1, name="onsets")(
+        onsets
     )
-    return (loss * weight).sum() / weight.sum()
 
+    offsets = _conv2d_stack(spec)
+    offsets = tf.keras.layers.Conv1D(
+        filters=num_pitches, kernel_size=1, name="offsets"
+    )(offsets)
 
-class _Conv2dStack(torch.nn.Sequential):
-    def __init__(self, in_channels, out_channels, dropout):
-        super().__init__()
-        self.conv2ds = torch.nn.Sequential(
-            torch.nn.utils.weight_norm(
-                torch.nn.Conv2d(
-                    in_channels=1, out_channels=48, kernel_size=3, padding=1,
-                )
+    actives = _conv2d_stack(spec)
+    actives = tf.keras.layers.Conv1D(
+        filters=num_pitches, kernel_size=1, name="actives"
+    )(actives)
+
+    model = tf.keras.Model(inputs=spec, outputs=[onsets, offsets, actives])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss={
+            "onsets": tf.keras.losses.BinaryCrossentropy(
+                from_logits=False, reduction=tf.keras.losses.Reduction.SUM
             ),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(dropout),
-            torch.nn.utils.weight_norm(
-                torch.nn.Conv2d(
-                    in_channels=48,
-                    out_channels=48,
-                    kernel_size=3,
-                    stride=(2, 1),
-                    padding=1,
-                )
+            "offsets": tf.keras.losses.BinaryCrossentropy(
+                from_logits=False, reduction=tf.keras.losses.Reduction.SUM
             ),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(dropout),
-            torch.nn.utils.weight_norm(
-                torch.nn.Conv2d(
-                    in_channels=48,
-                    out_channels=96,
-                    kernel_size=3,
-                    stride=(2, 1),
-                    padding=1,
-                )
+            "actives": tf.keras.losses.BinaryCrossentropy(
+                from_logits=False, reduction=tf.keras.losses.Reduction.SUM
             ),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(dropout),
-        )
-        self.linear = torch.nn.Conv1d(
-            96 * math.ceil(in_channels / 4), out_channels, kernel_size=1,
-        )
+        },
+    )
 
-    def forward(self, x):
-        x = x.unsqueeze(1)
-        x = self.conv2ds(x)
-        x = x.flatten(1, 2)
-        x = self.linear(x)
-        return x
-
-
-class Acoustic(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        in_channels = constants.SPEC_N_BINS
-        out_channels = constants.MAX_PITCH - constants.MIN_PITCH + 1
-        dropout = 0.2
-        self.onsets_stack = _Conv2dStack(in_channels, out_channels, dropout)
-        self.offsets_stack = _Conv2dStack(in_channels, out_channels, dropout)
-        self.actives_stack = _Conv2dStack(in_channels, out_channels, dropout)
-
-    def forward(self, spec):
-        pianoroll = {}
-        pianoroll["onsets"] = self.onsets_stack(spec)
-        pianoroll["offsets"] = self.offsets_stack(spec)
-        pianoroll["actives"] = self.actives_stack(spec)
-        return pianoroll
+    return model
