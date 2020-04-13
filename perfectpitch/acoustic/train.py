@@ -1,5 +1,8 @@
+import math
+
 import tensorflow as tf
 
+from perfectpitch import constants
 from .dataset import load_dataset
 from .model import create_model
 
@@ -22,7 +25,16 @@ def train(dataset_path, distribute_strategy):
         validation_data = load_dataset(
             dataset_path, "validation", strategy.num_replicas_in_sync
         )
+        steps_per_epoch = math.ceil(
+            constants.ACOUSTIC_SAMPLES_PER_EPOCH
+            / constants.ACOUSTIC_BATCH_SIZE_PER_REPLICA
+            / strategy.num_replicas_in_sync
+        )
+
         model = create_model()
         model.fit(
-            x=train_data, epochs=2, validation_data=validation_data,
+            x=train_data,
+            validation_data=validation_data,
+            epochs=constants.ACOUSTIC_NUM_EPOCH,
+            steps_per_epoch=steps_per_epoch,
         )

@@ -4,12 +4,6 @@ from perfectpitch import constants
 from perfectpitch.dataset.load import load_dataset as load_transcription_dataset
 
 
-MIN_LENGTH = 100
-MAX_LENGTH = 2500
-BATCH_SIZE_PER_REPLICA = 8
-SHUFFLE_BUFFER_SIZE_PER_REPLICA = BATCH_SIZE_PER_REPLICA * 16
-
-
 def _create_pianoroll__create_actives_indicies(pitches, onsets, offsets):
     length = tf.shape(pitches)[0]
     _, frame_indicies, pitch_indicies = tf.while_loop(
@@ -95,35 +89,45 @@ def _preprocess_sample(sample):
 
 def _split_sample__reshape_sequence(sequence):
     shape = tf.shape(sequence)
-    smallest = shape[0] % MAX_LENGTH
+    smallest = shape[0] % constants.ACOUSTIC_MAX_LENGTH
     new_sequence = tf.cond(
-        pred=smallest < MIN_LENGTH,
+        pred=smallest < constants.ACOUSTIC_MIN_LENGTH,
         true_fn=lambda: sequence[: shape[0] - smallest],
-        false_fn=lambda: tf.pad(sequence, [[0, MAX_LENGTH - smallest], [0, 0]]),
+        false_fn=lambda: tf.pad(
+            sequence, [[0, constants.ACOUSTIC_MAX_LENGTH - smallest], [0, 0]]
+        ),
     )
-    return tf.reshape(new_sequence, [-1, MAX_LENGTH, shape[1]])
+    return tf.reshape(new_sequence, [-1, constants.ACOUSTIC_MAX_LENGTH, shape[1]])
 
 
 def _split_sample(spec, pianoroll):
     spec = _split_sample__reshape_sequence(spec)
-    spec.set_shape([None, MAX_LENGTH, constants.SPEC_N_BINS])
+    spec.set_shape([None, constants.ACOUSTIC_MAX_LENGTH, constants.SPEC_N_BINS])
     pianoroll = {
         key: _split_sample__reshape_sequence(value) for key, value in pianoroll.items()
     }
     for value in pianoroll.values():
         value.set_shape(
-            [None, MAX_LENGTH, constants.MAX_PITCH - constants.MIN_PITCH + 1]
+            [
+                None,
+                constants.ACOUSTIC_MAX_LENGTH,
+                constants.MAX_PITCH - constants.MIN_PITCH + 1,
+            ]
         )
     return tf.data.Dataset.from_tensor_slices((spec, pianoroll))
 
 
 def load_dataset(path, split, num_replicas):
-    ordered = False if split == "train" else True
-    dataset = load_transcription_dataset(path, split, ordered)
+    dataset = load_transcription_dataset(path, split)
     dataset = dataset.map(_preprocess_sample, tf.data.experimental.AUTOTUNE)
     dataset = dataset.flat_map(_split_sample)
-    if not ordered:
-        dataset = dataset.shuffle(SHUFFLE_BUFFER_SIZE_PER_REPLICA * num_replicas)
-    dataset = dataset.batch(BATCH_SIZE_PER_REPLICA * num_replicas, drop_remainder=True)
+
+    if split == "train":
+        dataset = dataset.repeat()
+        dataset = dataset.shuffle(1024)
+
+    dataset = dataset.batch(
+        constants.ACOUSTIC_BATCH_SIZE_PER_REPLICA * num_replicas, drop_remainder=True
+    )
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     return dataset
