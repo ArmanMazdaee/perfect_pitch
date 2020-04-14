@@ -117,42 +117,38 @@ def save_notesequence(path, pitches, intervals, velocities):
     midi.save(path)
 
 
-def notesequence_to_pianoroll(pitches, intervals, velocities):
+def notesequence_to_pianoroll(pitches, intervals, velocities, num_frames=None):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
-    num_frames = int(intervals.max() / frame_duration) + 1
-    num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
     velocity_max = velocities.max().tolist()
+    num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
+    if num_frames is None:
+        num_frames = int(intervals.max() / frame_duration) + 1
 
-    notes = sorted(
-        [
-            (pitch, start_time, end_time, velocity)
-            for (pitch, (start_time, end_time), velocity) in zip(
-                pitches, intervals, velocities
-            )
-        ],
-        key=operator.itemgetter(1),
+    pitches = pitches - constants.MIN_PITCH
+    onsets = np.minimum(intervals[:, 0] // frame_duration, num_frames - 1).astype(
+        np.int32
     )
+    offsets = np.minimum(intervals[:, 1] // frame_duration, num_frames - 1).astype(
+        np.int32
+    )
+    velocities = velocities / velocity_max
+    valid_indices = np.logical_and(pitches >= 0, pitches < num_pitches)
+    valid_indices = np.logical_and(valid_indices, onsets != offsets)
+    pitches = pitches[valid_indices]
+    onsets = onsets[valid_indices]
+    offsets = offsets[valid_indices]
+    velocities = velocities[valid_indices]
 
     active_frames = np.zeros([num_pitches, num_frames], dtype=np.float32)
     onset_frames = np.zeros_like(active_frames)
     offset_frames = np.zeros_like(active_frames)
     velocity_frames = np.zeros_like(active_frames)
 
-    for pitch, start_time, end_time, velocity in notes:
-        if pitch > constants.MAX_PITCH or pitch < constants.MIN_PITCH:
-            continue
-
-        pitch_index = pitch - constants.MIN_PITCH
-
-        start_frame = int(start_time / frame_duration)
-        end_frame = int(end_time / frame_duration)
-        if start_frame == end_frame:
-            continue
-
-        active_frames[pitch_index, start_frame:end_frame] = 1
-        onset_frames[pitch_index, start_frame] = 1
-        offset_frames[pitch_index, end_frame] = 1
-        velocity_frames[pitch_index, start_frame:end_frame] = velocity / velocity_max
+    for pitch, onset, offset, velocity in zip(pitches, onsets, offsets, velocities):
+        active_frames[pitch, onset:offset] = 1
+        onset_frames[pitch, onset] = 1
+        offset_frames[pitch, offset] = 1
+        velocity_frames[pitch, onset] = velocity
 
     return {
         "actives": active_frames,
