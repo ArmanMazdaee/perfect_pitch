@@ -1,7 +1,5 @@
 import argparse
 
-from perfectpitch.acoustic.prepare_dataset import prepare_dataset as acoustic_dataset
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -9,29 +7,6 @@ def main():
     )
     subparsers = parser.add_subparsers(title="command")
     subparsers.required = True
-
-    acoustic_dataset_parser = subparsers.add_parser(
-        "acoustic-dataset",
-        help="Prepare the MAPS dataset for the acoustic model",
-        description=(
-            "Preparing the MAPS datasets for training and validating the acoustic model"
-        ),
-    )
-    acoustic_dataset_parser.set_defaults(func=acoustic_dataset)
-    acoustic_dataset_parser.add_argument(
-        "--input",
-        "-i",
-        required=True,
-        help="Path of the MAPS dataset",
-        dest="input_path",
-    )
-    acoustic_dataset_parser.add_argument(
-        "--output",
-        "-o",
-        required=True,
-        help="Path of the prepared dataset",
-        dest="output_path",
-    )
 
     acoustic_train_parser = subparsers.add_parser(
         "acoustic-train",
