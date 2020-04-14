@@ -7,7 +7,8 @@ import mido
 from perfectpitch import constants
 
 
-def audio_to_spec(audio):
+def load_spec(path):
+    audio, _ = librosa.load(path, constants.SAMPLE_RATE)
     mel = librosa.feature.melspectrogram(
         audio,
         constants.SAMPLE_RATE,
