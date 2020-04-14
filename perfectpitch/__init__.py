@@ -1,5 +1,7 @@
 import argparse
 
+from perfectpitch.dataset.maps import convert_maps
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -7,6 +9,29 @@ def main():
     )
     subparsers = parser.add_subparsers(title="command")
     subparsers.required = True
+
+    convert_maps_parser = subparsers.add_parser(
+        "convert-maps",
+        help="Convert the MAPS dataset for the perfectpitch",
+        description=(
+            "Convert the MAPS datasets to a format which is useable by perfectpitch"
+        ),
+    )
+    convert_maps_parser.set_defaults(func=convert_maps)
+    convert_maps_parser.add_argument(
+        "--input",
+        "-i",
+        required=True,
+        help="Path of the extracted MAPS dataset",
+        dest="input_path",
+    )
+    convert_maps_parser.add_argument(
+        "--output",
+        "-o",
+        required=True,
+        help="Path of the converted dataset",
+        dest="output_path",
+    )
 
     acoustic_train_parser = subparsers.add_parser(
         "acoustic-train",
