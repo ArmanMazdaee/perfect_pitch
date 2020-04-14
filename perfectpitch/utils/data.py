@@ -22,49 +22,68 @@ def load_spec(path):
 
 def load_notesequence(path):
     midi = mido.MidiFile(path)
-    if midi.type != 0:
-        raise NotImplementedError("midi file type is not 0")
+
+    if midi.type != 0 and midi.type != 1:
+        raise NotImplementedError("midi file type should be 0 or 1")
+
+    time = 0
+    events = []
+    for event in midi:
+        time += event.time
+        if event.type == "note_on" and event.velocity == 0:
+            events.append(mido.Message(type="note_off", note=event.note, time=time))
+        else:
+            events.append(event.copy(time=time))
+    events.append(mido.Message(type="control_change", control=64, value=0, time=time))
 
     notes = []
     actived = {}
+    sustained = {}
     sustain = False
-    time = 0
-
-    for event in midi:
-        time += event.time
+    for index, event in enumerate(events):
         if event.type == "note_on":
-            pitch = event.note
-            if pitch in actived:
-                onset = actived[pitch][0]
-                offset = time
-                velocity = actived[pitch][2]
-                notes.append((pitch, onset, offset, velocity))
-            actived[pitch] = (time, None, event.velocity)
-        elif event.type == "note_off":
-            pitch = event.note
-            onset = actived[pitch][0]
-            offset = time
-            velocity = actived[pitch][2]
-            actived[pitch] = (onset, offset, velocity)
-            if not sustain:
-                notes.append((pitch, onset, offset, velocity))
-                del actived[pitch]
-        elif (
-            event.type == "control_change" and event.control == 64 and event.value >= 64
-        ):
-            sustain = True
-        elif (
-            event.type == "control_change" and event.control == 64 and event.value < 64
-        ):
-            sustain = False
-            pitches = [p for p, v in actived.items() if v[1] is not None]
-            for pitch in pitches:
-                onset, offset, velocity = actived[pitch]
-                notes.append((pitch, onset, offset, velocity))
-                del actived[pitch]
+            if event.note in actived:
+                continue
+            if sustain and event.note in sustained:
+                onset_event = events[sustained[event.note]]
+                notes.append(
+                    (event.note, onset_event.time, event.time, onset_event.velocity)
+                )
+                del sustained[event.note]
+            actived[event.note] = index
 
-    for pitch, (onset, _, velocity) in actived.items():
-        notes.append((pitch, onset, time, velocity))
+        elif event.type == "note_off":
+            if event.note not in actived:
+                continue
+            if sustain:
+                sustained[event.note] = actived[event.note]
+            else:
+                onset_event = events[actived[event.note]]
+                notes.append(
+                    (event.note, onset_event.time, event.time, onset_event.velocity)
+                )
+            del actived[event.note]
+
+        elif event.type == "control_change" and event.control == 64:
+            if event.value >= 64 and not sustain:
+                sustain = True
+            elif event.value < 64 and sustain:
+                for onset_index in sustained.values():
+                    onset_event = events[onset_index]
+                    notes.append(
+                        (
+                            onset_event.note,
+                            onset_event.time,
+                            event.time,
+                            onset_event.velocity,
+                        )
+                    )
+                sustained.clear()
+
+    if len(sustained) != 0:
+        raise RuntimeError("Some notes left sustained at the end of midi file")
+    if len(actived) != 0:
+        raise RuntimeError("Some notes left actived at the end of midi file")
 
     return {
         "pitches": np.array([note[0] for note in notes], dtype=np.int8),
