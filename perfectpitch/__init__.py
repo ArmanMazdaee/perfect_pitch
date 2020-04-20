@@ -2,6 +2,7 @@ import argparse
 
 from perfectpitch.dataset.maps import convert_maps
 from perfectpitch.dataset.maestro import convert_maestro
+from perfectpitch.acoustic.train import train_acoustic
 
 
 def main():
@@ -58,28 +59,37 @@ def main():
     )
 
     acoustic_train_parser = subparsers.add_parser(
-        "acoustic-train",
+        "train-acoustic",
         help="Train the acoustic model",
         description="Train the acoustic model",
     )
-    acoustic_train_parser.set_defaults(
-        func=lambda dataset_path, use_gpu: print(
-            "acoustic-trian", dataset_path, use_gpu
-        )
-    )
+    acoustic_train_parser.set_defaults(func=train_acoustic)
     acoustic_train_parser.add_argument(
-        "--dataset-path",
-        "-d",
+        "--train-dataset",
+        "-t",
         required=True,
-        help="Path of the dataset",
-        dest="dataset_path",
+        help="Path of the train dataset",
+        dest="train_dataset_path",
     )
     acoustic_train_parser.add_argument(
-        "--gpu",
-        "-g",
-        action="store_true",
-        help="Use gpu for training the model",
-        dest="use_gpu",
+        "--validation-dataset",
+        "-v",
+        required=True,
+        help="Path of the validation dataset",
+        dest="validation_dataset_path",
+    )
+    acoustic_train_parser.add_argument(
+        "--device",
+        "-d",
+        choices=["cpu", "gpu", "tpu"],
+        help="device to use for training the model",
+        dest="device",
+    )
+    acoustic_train_parser.add_argument(
+        "--model-dir",
+        "-m",
+        help="Directory to use save the logs and weights",
+        dest="model_dir",
     )
 
     args = parser.parse_args()
