@@ -79,17 +79,18 @@ def main():
         dest="validation_dataset_path",
     )
     acoustic_train_parser.add_argument(
-        "--device",
-        "-d",
-        choices=["cpu", "gpu", "tpu"],
-        help="device to use for training the model",
-        dest="device",
-    )
-    acoustic_train_parser.add_argument(
         "--model-dir",
         "-m",
+        required=True,
         help="Directory to use save the logs and weights",
         dest="model_dir",
+    )
+    acoustic_train_parser.add_argument(
+        "--device",
+        "-d",
+        default="cpu",
+        help="device to use for training the model",
+        dest="device",
     )
 
     args = parser.parse_args()
