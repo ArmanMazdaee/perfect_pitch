@@ -15,24 +15,29 @@ def _batch_to_device(batch, device):
         return batch.to(device)
 
 
-def _evaluate_prediction(perdiction, label):
-    onsets_loss = F.binary_cross_entropy_with_logits(
-        perdiction["onsets"], label["onsets"]
-    )
-    offsets_loss = F.binary_cross_entropy_with_logits(
-        perdiction["offsets"], label["offsets"]
-    )
-    actives_loss = F.binary_cross_entropy_with_logits(
-        perdiction["actives"], label["actives"]
-    )
-    loss = onsets_loss + offsets_loss + actives_loss
+def _evaluate_binary_prediction(prediction, label):
+    loss = F.binary_cross_entropy_with_logits(prediction, label)
 
-    return {
-        "onsets_loss": onsets_loss,
-        "offsets_loss": offsets_loss,
-        "actives_loss": actives_loss,
-        "loss": loss,
-    }
+    positive = torch.zeros_like(prediction)
+    positive[prediction >= 0] = 1
+    true = torch.zeros_like(label)
+    true[label >= 0.5] = 1
+    true_positive = positive * true
+    precision = true_positive.sum() / (positive.sum() + 1e-6)
+    recall = true_positive.sum() / (true.sum() + 1e-6)
+
+    return {"loss": loss, "precision": precision, "recall": recall}
+
+
+def _evaluate_prediction(prediction, label):
+    result = {}
+    result["loss"] = 0
+    for head in ["onsets", "offsets", "actives"]:
+        head_result = _evaluate_binary_prediction(prediction[head], label[head])
+        result.update({f"{head}_{key}": value for key, value in head_result.items()})
+        result["loss"] += head_result["loss"]
+
+    return result
 
 
 def _train_epoch(loader, model, optimizer, device):
