@@ -109,7 +109,7 @@ def train_acoustic(train_dataset_path, validation_dataset_path, model_dir, devic
         drop_last=False,
     )
     model = AcousticModel().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
 
     for epoch in range(1, 6):
         train_result = _train_epoch(train_loader, model, optimizer, device)
