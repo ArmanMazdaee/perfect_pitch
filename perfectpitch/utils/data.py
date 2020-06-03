@@ -1,23 +1,24 @@
 import operator
 
-import numpy as np
-import librosa
+import torch
+import torchaudio
 import mido
 
 from perfectpitch import constants
 
 
-def load_spec(path):
-    audio, _ = librosa.load(path, constants.SAMPLE_RATE)
-    mel = librosa.feature.melspectrogram(
-        audio,
-        constants.SAMPLE_RATE,
-        hop_length=constants.SPEC_HOP_LENGTH,
-        fmin=30.0,
-        n_mels=constants.SPEC_N_BINS,
-        htk=True,
+def load_audio(path):
+    audio, samplerate = torchaudio.load(path)
+    audio = audio.mean(axis=0)
+    resample = torchaudio.transforms.Resample(
+        orig_freq=samplerate, new_freq=constants.SAMPLE_RATE
     )
-    return mel.astype(np.float32)
+    return resample(audio)
+
+
+def save_audio(path, audio):
+    audio = audio.unsqueeze(0)
+    torchaudio.save(path, audio, constants.SAMPLE_RATE)
 
 
 def load_notesequence(path):
@@ -86,9 +87,9 @@ def load_notesequence(path):
         raise RuntimeError("Some notes left actived at the end of midi file")
 
     return {
-        "pitches": np.array([note[0] for note in notes], dtype=np.int8),
-        "intervals": np.array([(note[1], note[2]) for note in notes], dtype=np.float32),
-        "velocities": np.array([note[3] for note in notes], dtype=np.int8),
+        "pitches": torch.ByteTensor([note[0] for note in notes]),
+        "intervals": torch.FloatTensor([(note[1], note[2]) for note in notes]),
+        "velocities": torch.ByteTensor([note[3] for note in notes]),
     }
 
 
@@ -98,7 +99,11 @@ def save_notesequence(path, pitches, intervals, velocities):
     midi.tracks.append(track)
 
     messages = []
-    for pitch, (start, end), velocity in zip(pitches, intervals, velocities):
+    for index in range(len(pitches)):
+        pitch = pitches[index].item()
+        start = intervals[index][0].item()
+        end = intervals[index][1].item()
+        velocity = velocities[index].item()
         messages.append(
             mido.Message("note_on", note=pitch, time=start, velocity=velocity)
         )
@@ -119,32 +124,32 @@ def save_notesequence(path, pitches, intervals, velocities):
 
 def notesequence_to_pianoroll(pitches, intervals, velocities, num_frames=None):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
-    velocity_max = velocities.max().tolist()
     num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
     if num_frames is None:
         num_frames = int(intervals.max() / frame_duration) + 1
 
     pitches = pitches - constants.MIN_PITCH
-    onsets = np.minimum(intervals[:, 0] // frame_duration, num_frames - 1).astype(
-        np.int32
+    intervals = (intervals // frame_duration).long().clamp_max(num_frames - 1)
+    velocities = velocities.float() / velocities.max()
+
+    valid_indices = (
+        (pitches >= 0) & (pitches < num_pitches) & (intervals[:, 0] != intervals[:, 1])
     )
-    offsets = np.minimum(intervals[:, 1] // frame_duration, num_frames - 1).astype(
-        np.int32
-    )
-    velocities = velocities / velocity_max
-    valid_indices = np.logical_and(pitches >= 0, pitches < num_pitches)
-    valid_indices = np.logical_and(valid_indices, onsets != offsets)
     pitches = pitches[valid_indices]
-    onsets = onsets[valid_indices]
-    offsets = offsets[valid_indices]
+    intervals = intervals[valid_indices]
     velocities = velocities[valid_indices]
 
-    active_frames = np.zeros([num_pitches, num_frames], dtype=np.float32)
-    onset_frames = np.zeros_like(active_frames)
-    offset_frames = np.zeros_like(active_frames)
-    velocity_frames = np.zeros_like(active_frames)
+    active_frames = torch.zeros([num_pitches, num_frames])
+    onset_frames = torch.zeros_like(active_frames)
+    offset_frames = torch.zeros_like(active_frames)
+    velocity_frames = torch.zeros_like(active_frames)
 
-    for pitch, onset, offset, velocity in zip(pitches, onsets, offsets, velocities):
+    for index in range(len(pitches)):
+        pitch = pitches[index].item()
+        onset = intervals[index][0].item()
+        offset = intervals[index][1].item()
+        velocity = velocities[index].item()
+
         active_frames[pitch, onset:offset] = 1
         onset_frames[pitch, onset] = 1
         offset_frames[pitch, offset] = 1
@@ -160,11 +165,13 @@ def notesequence_to_pianoroll(pitches, intervals, velocities, num_frames=None):
 
 def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
+    num_pitches = actives.shape[0]
+    num_frames = actives.shape[1]
     notes = []
 
-    for pitch in range(actives.shape[0]):
+    for pitch in range(num_pitches):
         start_frame = None
-        for frame in range(actives.shape[1]):
+        for frame in range(num_frames):
             is_onset = onsets[pitch, frame] >= 0.5
             is_previous_onset = onsets[pitch, frame - 1] >= 0.5 if frame > 0 else False
             is_offset = offsets[pitch, frame] >= 0.5 or actives[pitch, frame] < 0.5
@@ -173,12 +180,7 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
                 is_onset and start_frame is not None and not is_previous_onset
             ):
                 notes.append(
-                    (
-                        pitch + constants.MIN_PITCH,
-                        start_frame * frame_duration,
-                        frame * frame_duration,
-                        np.clip(velocities[pitch, start_frame], 0, 1) * 80 + 10,
-                    )
+                    (pitch, start_frame, frame, velocities[pitch, start_frame])
                 )
                 start_frame = None
 
@@ -187,16 +189,17 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
 
         if start_frame is not None:
             notes.append(
-                (
-                    pitch + constants.MIN_PITCH,
-                    start_frame * frame_duration,
-                    actives.shape[1] * frame_duration,
-                    np.clip(velocities[pitch, start_frame], 0, 1) * 80 + 10,
-                )
+                (pitch, start_frame, num_frames, velocities[pitch, start_frame])
             )
 
+    pitches = torch.ByteTensor([note[0] for note in notes]) + constants.MIN_PITCH
+    intervals = (
+        torch.FloatTensor([(note[1], note[2]) for note in notes]) * frame_duration
+    )
+    velocities = torch.FloatTensor([note[3] for note in notes]).clamp(0, 1) * 80 + 10
+
     return {
-        "pitches": np.array([note[0] for note in notes], dtype=np.int8),
-        "intervals": np.array([(note[1], note[2]) for note in notes], dtype=np.float32),
-        "velocities": np.round([note[3] for note in notes]).astype(np.int8),
+        "pitches": pitches,
+        "intervals": intervals,
+        "velocities": velocities,
     }
