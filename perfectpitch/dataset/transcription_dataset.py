@@ -1,13 +1,12 @@
 import os
 from glob import glob
 
-import numpy as np
 import torch
 
 
 class TranscriptionDataset(torch.utils.data.Dataset):
     def __init__(self, path):
-        sample_filenames = sorted(glob(os.path.join(path, "*.npz")))
+        sample_filenames = sorted(glob(os.path.join(path, "*.pt")))
         if len(sample_filenames) == 0:
             raise ValueError(f"No sample found in {path}")
 
@@ -17,12 +16,12 @@ class TranscriptionDataset(torch.utils.data.Dataset):
         return len(self.__sample_filenames)
 
     def __getitem__(self, index):
-        sample = np.load(self.__sample_filenames[index])
+        sample = torch.load(self.__sample_filenames[index])
         return {
-            "spec": torch.from_numpy(sample["spec"]),
+            "audio": sample["audio"],
             "notesequence": {
-                "pitches": torch.from_numpy(sample["notesequence_pitches"]),
-                "intervals": torch.from_numpy(sample["notesequence_intervals"]),
-                "velocities": torch.from_numpy(sample["notesequence_velocities"]),
+                "pitches": sample["pitches"],
+                "intervals": sample["intervals"],
+                "velocities": sample["velocities"],
             },
         }
