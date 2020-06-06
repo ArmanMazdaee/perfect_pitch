@@ -1,3 +1,4 @@
+import math
 import operator
 
 import torch
@@ -8,17 +9,72 @@ from perfectpitch import constants
 
 
 def load_audio(path):
-    audio, samplerate = torchaudio.load(path)
-    audio = audio.mean(axis=0)
-    resample = torchaudio.transforms.Resample(
-        orig_freq=samplerate, new_freq=constants.SAMPLE_RATE
+    audio, sample_rate = torchaudio.load(path)
+    audio = audio.mean(dim=0, keepdim=True)
+    audio = torchaudio.compliance.kaldi.resample_waveform(
+        waveform=audio, orig_freq=sample_rate, new_freq=constants.SAMPLE_RATE
     )
-    return resample(audio)
+    return audio.view([-1])
 
 
 def save_audio(path, audio):
-    audio = audio.unsqueeze(0)
-    torchaudio.save(path, audio, constants.SAMPLE_RATE)
+    torchaudio.save(path, audio.view([1, -1]), constants.SAMPLE_RATE)
+
+
+def audio_to_spec(audio):
+    win_length = 1024
+    pad = (
+        math.floor((win_length - constants.SPEC_HOP_LENGTH) / 2),
+        math.ceil((win_length - constants.SPEC_HOP_LENGTH) / 2),
+    )
+    audio = torch.nn.functional.pad(audio.view([1, 1, -1]), pad, "reflect")
+
+    pitches = torch.arange(constants.MIN_PITCH, constants.MAX_PITCH + 1)
+    frequencies = 440 * (2 ** ((pitches - 69) / 12.0))
+    real_points = torch.stack(
+        [
+            torch.linspace(
+                start=0,
+                end=f * 2 * math.pi * win_length / constants.SAMPLE_RATE,
+                steps=win_length,
+            )
+            for f in frequencies
+        ]
+    )
+    imag_points = real_points + (math.pi / 2)
+
+    real_kernel = (torch.sin(real_points) * torch.hann_window(win_length)).unsqueeze(1)
+    imag_kernel = (torch.sin(imag_points) * torch.hann_window(win_length)).unsqueeze(1)
+
+    real_spec = torch.nn.functional.conv1d(
+        audio, real_kernel, stride=constants.SPEC_HOP_LENGTH
+    ).squeeze(0)
+    imag_spec = torch.nn.functional.conv1d(
+        audio, imag_kernel, stride=constants.SPEC_HOP_LENGTH
+    ).squeeze(0)
+    spec = torch.sqrt((real_spec ** 2) + (imag_spec ** 2))
+    return spec
+
+
+def spec_to_audio(spec):
+    repeated_spec = spec.repeat_interleave(constants.SPEC_HOP_LENGTH, dim=1)
+    pitches = torch.arange(constants.MIN_PITCH, constants.MAX_PITCH + 1)
+    frequencies = 440 * (2 ** ((pitches - 69) / 12.0))
+    points = torch.stack(
+        [
+            torch.linspace(
+                start=0,
+                end=f * 2 * math.pi * repeated_spec.shape[1] / constants.SAMPLE_RATE,
+                steps=repeated_spec.shape[1],
+            )
+            for f in frequencies
+        ]
+    )
+    sins = torch.sin(points)
+    audio = (sins * repeated_spec).sum(dim=0)
+    audio = audio - audio.mean()
+    audio = audio / audio.abs().max()
+    return audio
 
 
 def load_notesequence(path):
@@ -153,7 +209,7 @@ def notesequence_to_pianoroll(pitches, intervals, velocities, num_frames=None):
         active_frames[pitch, onset:offset] = 1
         onset_frames[pitch, onset] = 1
         offset_frames[pitch, offset] = 1
-        velocity_frames[pitch, onset] = velocity
+        velocity_frames[pitch, onset:offset] = velocity
 
     return {
         "actives": active_frames,
