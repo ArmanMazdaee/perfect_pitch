@@ -1,7 +1,8 @@
 import torch
 
+from perfectpitch import constants
 from perfectpitch.dataset.transcription_dataset import TranscriptionDataset
-from perfectpitch.utils.data import notesequence_to_pianoroll
+from perfectpitch.utils.data import audio_to_spec, notesequence_to_pianoroll
 
 
 class AcousticDataset(TranscriptionDataset):
@@ -15,7 +16,7 @@ class AcousticDataset(TranscriptionDataset):
         sample_splits = []
         for index in range(super().__len__()):
             sample = super().__getitem__(index)
-            length = sample["spec"].shape[1]
+            length = len(sample["audio"]) // constants.SPEC_HOP_LENGTH
             step = length if max_length is None else max_length
             for start in range(0, length, step):
                 end = min(length, start + step)
@@ -28,21 +29,19 @@ class AcousticDataset(TranscriptionDataset):
 
     def __getitem__(self, index):
         sample_index, start, end = self.__sample_splits[index]
-        sample = super().__getitem__(sample_index)
-        spec = sample["spec"]
         length = end - start
-        sample_length = spec.shape[1]
+        sample = super().__getitem__(sample_index)
+        audio = sample["audio"]
+        notesequence = sample["notesequence"]
+        sample_length = len(audio) // constants.SPEC_HOP_LENGTH
 
-        notesequence = {
-            key: value.numpy() for key, value in sample["notesequence"].items()
-        }
+        spec = audio_to_spec(audio)
         pianoroll = notesequence_to_pianoroll(
             notesequence["pitches"],
             notesequence["intervals"],
             notesequence["velocities"],
             sample_length,
         )
-        pianoroll = {key: torch.from_numpy(value) for key, value in pianoroll.items()}
 
         if length < sample_length:
             spec = spec[:, start:end]
