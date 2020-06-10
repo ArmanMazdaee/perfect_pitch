@@ -11,7 +11,7 @@ setup(
     license="MIT",
     packages=find_packages(),
     entry_points={"console_scripts": ["perfectpitch = perfectpitch:main"]},
-    python_requires=">=3.7,<4.0",
+    python_requires=">=3.6,<4.0",
     install_requires=[
         "torch>=1.5.0,<2.0.0",
         "torchaudio>=0.5.0,<0.6.0",
