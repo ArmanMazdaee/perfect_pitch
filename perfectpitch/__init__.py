@@ -2,6 +2,7 @@ import argparse
 
 from perfectpitch.dataset.maps import convert_maps
 from perfectpitch.dataset.maestro import convert_maestro
+from perfectpitch.acoustic.train import train_acoustic
 from perfectpitch.transcriber.evaluate import evaluate_transcriber
 
 
@@ -63,7 +64,7 @@ def main():
         help="Train the acoustic model",
         description="Train the acoustic model",
     )
-    acoustic_train_parser.set_defaults(func=lambda **kwargs: print(kwargs))
+    acoustic_train_parser.set_defaults(func=train_acoustic)
     acoustic_train_parser.add_argument(
         "--train-dataset",
         "-t",
