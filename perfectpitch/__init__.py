@@ -2,7 +2,7 @@ import argparse
 
 from perfectpitch.dataset.maps import convert_maps
 from perfectpitch.dataset.maestro import convert_maestro
-from perfectpitch.acoustic.train import train_acoustic
+from perfectpitch.onsetsdetector.train import train_onsets_detector
 from perfectpitch.transcriber.evaluate import evaluate_transcriber
 
 
@@ -59,34 +59,34 @@ def main():
         dest="output_path",
     )
 
-    acoustic_train_parser = subparsers.add_parser(
-        "train-acoustic",
-        help="Train the acoustic model",
-        description="Train the acoustic model",
+    train_onsets_detector_parser = subparsers.add_parser(
+        "train-onsets-detector",
+        help="Train the onsets detector",
+        description="Train the onsets detector",
     )
-    acoustic_train_parser.set_defaults(func=train_acoustic)
-    acoustic_train_parser.add_argument(
+    train_onsets_detector_parser.set_defaults(func=train_onsets_detector)
+    train_onsets_detector_parser.add_argument(
         "--train-dataset",
         "-t",
         required=True,
         help="Path of the train dataset",
         dest="train_dataset_path",
     )
-    acoustic_train_parser.add_argument(
+    train_onsets_detector_parser.add_argument(
         "--validation-dataset",
         "-v",
         required=True,
         help="Path of the validation dataset",
         dest="validation_dataset_path",
     )
-    acoustic_train_parser.add_argument(
+    train_onsets_detector_parser.add_argument(
         "--model-dir",
         "-m",
         required=True,
         help="Directory to use save the logs and weights",
         dest="model_dir",
     )
-    acoustic_train_parser.add_argument(
+    train_onsets_detector_parser.add_argument(
         "--device",
         "-d",
         default="cpu",

@@ -5,7 +5,7 @@ from perfectpitch.dataset.transcription_dataset import TranscriptionDataset
 from perfectpitch.utils.data import audio_to_spec, notesequence_to_pianoroll
 
 
-class AcousticDataset(TranscriptionDataset):
+class OnsetsDataset(TranscriptionDataset):
     def __init__(self, path, min_length=None, max_length=None, pad_sequences=False):
         super().__init__(path)
 
@@ -31,28 +31,27 @@ class AcousticDataset(TranscriptionDataset):
         sample_index, start, end = self.__sample_splits[index]
         length = end - start
         sample = super().__getitem__(sample_index)
-        audio = sample["audio"]
-        notesequence = sample["notesequence"]
-        sample_length = len(audio) // constants.SPEC_HOP_LENGTH
 
+        audio = sample["audio"]
         spec = audio_to_spec(audio)
+        sample_length = spec.shape[1]
+
+        notesequence = sample["notesequence"]
         pianoroll = notesequence_to_pianoroll(
             notesequence["pitches"],
             notesequence["intervals"],
             notesequence["velocities"],
             sample_length,
         )
+        onsets = pianoroll["onsets"]
 
         if length < sample_length:
             spec = spec[:, start:end]
-            pianoroll = {key: value[:, start:end] for key, value in pianoroll.items()}
+            onsets = onsets[:, start:end]
 
         if self.__sequences_length is not None and self.__sequences_length > length:
             pad = (0, self.__sequences_length - length)
             spec = torch.nn.functional.pad(spec, pad)
-            pianoroll = {
-                key: torch.nn.functional.pad(value, pad)
-                for key, value in pianoroll.items()
-            }
+            onsets = torch.nn.functional.pad(onsets, pad)
 
-        return {"spec": spec, "pianoroll": pianoroll}
+        return spec, onsets
