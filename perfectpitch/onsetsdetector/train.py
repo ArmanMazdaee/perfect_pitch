@@ -24,7 +24,7 @@ def _evaluate_prediction(prediction, label):
     return {"loss": loss, "precision": precision, "recall": recall, "f1": f1}
 
 
-def _train_epoch(loader, model, optimizer, device):
+def _train_epoch(loader, model, optimizer, scheduler, device):
     results = defaultdict(list)
     model.train()
     for spec, label in tqdm(loader, desc="training"):
@@ -36,6 +36,7 @@ def _train_epoch(loader, model, optimizer, device):
         optimizer.zero_grad()
         result["loss"].backward()
         optimizer.step()
+        scheduler.step()
 
         for key, value in result.items():
             results[key].append(value.detach())
@@ -94,9 +95,12 @@ def train_onsets_detector(
         drop_last=False,
     )
     model = OnsetsDetector().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
+    optimizer = torch.optim.Adam(model.parameters())
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer, max_lr=0.003, steps_per_epoch=len(train_loader), epochs=num_epochs
+    )
 
     for epoch in range(1, num_epochs + 1):
-        train_result = _train_epoch(train_loader, model, optimizer, device)
+        train_result = _train_epoch(train_loader, model, optimizer, scheduler, device)
         validation_result = _validate_epoch(validation_loader, model, device)
         _log_results(epoch, train_result, validation_result)
