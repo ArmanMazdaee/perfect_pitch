@@ -4,7 +4,7 @@ from perfectpitch import constants
 
 
 class _Conv2dResidualBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, dilation, dropout):
+    def __init__(self, in_channels, out_channels, dilation):
         super().__init__()
         self.conv1 = torch.nn.utils.weight_norm(
             torch.nn.Conv2d(
@@ -15,17 +15,16 @@ class _Conv2dResidualBlock(torch.nn.Module):
                 dilation=(1, dilation),
             )
         )
-        self.dropout1 = torch.nn.Dropout(dropout)
+        self.dropout1 = torch.nn.Dropout(0.2)
         self.conv2 = torch.nn.utils.weight_norm(
             torch.nn.Conv2d(
                 in_channels=out_channels,
                 out_channels=out_channels,
                 kernel_size=(3, 3),
-                padding=(1, dilation),
-                dilation=(1, dilation),
+                padding=(1, 1),
             )
         )
-        self.dropout2 = torch.nn.Dropout(dropout)
+        self.dropout2 = torch.nn.Dropout(0.2)
 
         self.downsample = None
         if in_channels != out_channels:
@@ -52,28 +51,22 @@ class OnsetsDetector(torch.nn.Module):
         super().__init__()
         num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
         self.conv2d_stack = torch.nn.Sequential(
-            _Conv2dResidualBlock(
-                in_channels=1, out_channels=8, dilation=1, dropout=0.2
-            ),
-            _Conv2dResidualBlock(
-                in_channels=8, out_channels=16, dilation=2, dropout=0.2
-            ),
-            _Conv2dResidualBlock(
-                in_channels=16, out_channels=32, dilation=4, dropout=0.2
-            ),
-            _Conv2dResidualBlock(
-                in_channels=32, out_channels=64, dilation=8, dropout=0.2
-            ),
-            _Conv2dResidualBlock(
-                in_channels=64, out_channels=64, dilation=16, dropout=0.2
-            ),
+            _Conv2dResidualBlock(in_channels=1, out_channels=64, dilation=1),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=2),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=4),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=8),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=16),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=32),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=64),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=128),
+            _Conv2dResidualBlock(in_channels=64, out_channels=64, dilation=256),
         )
         self.linear_stack = torch.nn.Sequential(
             torch.nn.Conv1d(
-                in_channels=num_pitches * 64, out_channels=128, kernel_size=1
+                in_channels=num_pitches * 64, out_channels=64, kernel_size=1
             ),
             torch.nn.ReLU(),
-            torch.nn.Conv1d(in_channels=128, out_channels=num_pitches, kernel_size=1),
+            torch.nn.Conv1d(in_channels=64, out_channels=num_pitches, kernel_size=1),
         )
 
     def forward(self, spec):
