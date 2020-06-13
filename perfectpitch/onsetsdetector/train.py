@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import torch
-import torch.nn.functional as F
 from tqdm import tqdm
 
 from .dataset import OnsetsDataset
@@ -9,7 +8,9 @@ from .model import OnsetsDetector
 
 
 def _evaluate_prediction(prediction, label):
-    loss = F.binary_cross_entropy_with_logits(prediction, label)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(
+        prediction, label, pos_weight=torch.tensor(5.0)
+    )
 
     positive = torch.zeros_like(prediction)
     positive[prediction >= 0] = 1
@@ -18,8 +19,9 @@ def _evaluate_prediction(prediction, label):
     true_positive = positive * true
     precision = true_positive.sum() / (positive.sum() + 1e-6)
     recall = true_positive.sum() / (true.sum() + 1e-6)
+    f1 = 2 * precision * recall / (precision + recall + 1e-6)
 
-    return {"loss": loss, "precision": precision, "recall": recall}
+    return {"loss": loss, "precision": precision, "recall": recall, "f1": f1}
 
 
 def _train_epoch(loader, model, optimizer, device):
@@ -73,6 +75,7 @@ def _log_results(epoch, train_result, validation_result):
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
+    num_epochs = 10
     device = torch.device(device)
     train_dataset = OnsetsDataset(train_dataset_path, min_length=150, max_length=4000)
     train_loader = torch.utils.data.DataLoader(
@@ -91,9 +94,9 @@ def train_onsets_detector(
         drop_last=False,
     )
     model = OnsetsDetector().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
 
-    for epoch in range(1, 6):
+    for epoch in range(1, num_epochs + 1):
         train_result = _train_epoch(train_loader, model, optimizer, device)
         validation_result = _validate_epoch(validation_loader, model, device)
         _log_results(epoch, train_result, validation_result)
