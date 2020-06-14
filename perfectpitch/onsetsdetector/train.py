@@ -78,7 +78,7 @@ def train_onsets_detector(
 ):
     num_epochs = 10
     device = torch.device(device)
-    train_dataset = OnsetsDataset(train_dataset_path, min_length=150, max_length=4000)
+    train_dataset = OnsetsDataset(train_dataset_path, min_length=150, max_length=12000)
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
         batch_size=1,
@@ -95,7 +95,7 @@ def train_onsets_detector(
         drop_last=False,
     )
     model = OnsetsDetector().to(device)
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), weight_decay=0.001)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer, max_lr=0.01, steps_per_epoch=len(train_loader), epochs=num_epochs
     )
