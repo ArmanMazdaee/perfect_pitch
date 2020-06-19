@@ -9,7 +9,7 @@ from .model import OnsetsDetector
 
 def _evaluate_prediction(prediction, label):
     loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        prediction, label, pos_weight=torch.tensor(5.0)
+        prediction, label, pos_weight=torch.tensor(3.0)
     )
 
     positive = torch.zeros_like(prediction)
@@ -76,7 +76,7 @@ def _log_results(epoch, train_result, validation_result):
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
-    num_epochs = 10
+    num_epochs = 20
     device = torch.device(device)
     train_dataset = OnsetsDataset(train_dataset_path, min_length=150, max_length=12000)
     train_loader = torch.utils.data.DataLoader(
@@ -95,9 +95,9 @@ def train_onsets_detector(
         drop_last=False,
     )
     model = OnsetsDetector().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), weight_decay=0.001)
+    optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.01, steps_per_epoch=len(train_loader), epochs=num_epochs
+        optimizer, max_lr=0.003, steps_per_epoch=len(train_loader), epochs=num_epochs
     )
 
     for epoch in range(1, num_epochs + 1):
