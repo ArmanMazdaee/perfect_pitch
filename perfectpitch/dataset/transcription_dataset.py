@@ -18,7 +18,7 @@ class TranscriptionDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         sample = torch.load(self.__sample_filenames[index])
         return {
-            "audio": sample["audio"],
+            "spec": sample["spec"],
             "notesequence": {
                 "pitches": sample["pitches"],
                 "intervals": sample["intervals"],

@@ -1,8 +1,7 @@
 import torch
 
-from perfectpitch import constants
 from perfectpitch.dataset.transcription_dataset import TranscriptionDataset
-from perfectpitch.utils.data import audio_to_spec, notesequence_to_pianoroll
+from perfectpitch.utils.data import notesequence_to_pianoroll
 
 
 class OnsetsDataset(TranscriptionDataset):
@@ -16,7 +15,7 @@ class OnsetsDataset(TranscriptionDataset):
         sample_splits = []
         for index in range(super().__len__()):
             sample = super().__getitem__(index)
-            length = len(sample["audio"]) // constants.SPEC_HOP_LENGTH
+            length = sample["spec"].shape[1]
             step = length if max_length is None else max_length
             for start in range(0, length, step):
                 end = min(length, start + step)
@@ -32,8 +31,7 @@ class OnsetsDataset(TranscriptionDataset):
         length = end - start
         sample = super().__getitem__(sample_index)
 
-        audio = sample["audio"]
-        spec = audio_to_spec(audio)
+        spec = sample["spec"]
         sample_length = spec.shape[1]
 
         notesequence = sample["notesequence"]

@@ -3,7 +3,7 @@ import os
 import torch
 from tqdm import tqdm
 
-from perfectpitch.utils.data import load_audio, load_notesequence
+from perfectpitch.utils.data import load_audio, load_notesequence, audio_to_spec
 
 
 def create_transcription_dataset(output_path, names, wav_filenames, midi_filenames):
@@ -14,10 +14,11 @@ def create_transcription_dataset(output_path, names, wav_filenames, midi_filenam
         total=len(names),
     ):
         audio = load_audio(wav_filename)
+        spec = audio_to_spec(audio)
         notesequence = load_notesequence(midi_filename)
         torch.save(
             {
-                "audio": audio,
+                "spec": spec,
                 "pitches": notesequence["pitches"],
                 "intervals": notesequence["intervals"],
                 "velocities": notesequence["velocities"],
