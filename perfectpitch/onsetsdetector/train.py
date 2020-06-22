@@ -7,15 +7,15 @@ from .dataset import OnsetsDataset
 from .model import OnsetsDetector
 
 
-def _evaluate_prediction(prediction, label):
+def _evaluate(predictions, labels, weights):
     loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        prediction, label, pos_weight=torch.tensor(3.0)
+        predictions, labels, weights
     )
 
-    positive = torch.zeros_like(prediction)
-    positive[prediction >= 0] = 1
-    true = torch.zeros_like(label)
-    true[label >= 0.5] = 1
+    positive = torch.zeros_like(predictions)
+    positive[(predictions >= 0) & (weights >= 0)] = 1
+    true = torch.zeros_like(labels)
+    true[(labels >= 0.5) & (weights >= 0)] = 1
     true_positive = positive * true
     precision = true_positive.sum() / (positive.sum() + 1e-6)
     recall = true_positive.sum() / (true.sum() + 1e-6)
@@ -24,14 +24,15 @@ def _evaluate_prediction(prediction, label):
     return {"loss": loss, "precision": precision, "recall": recall, "f1": f1}
 
 
-def _train_epoch(loader, model, optimizer, scheduler, device):
+def _train_epoch(loader, model, optimizer, scheduler, num_steps, device):
     results = defaultdict(list)
     model.train()
-    for spec, label in tqdm(loader, desc="training"):
-        spec = spec.to(device)
-        label = label.to(device)
-        prediction = model(spec)
-        result = _evaluate_prediction(prediction, label)
+    for specs, labels, weights in tqdm(loader, desc="training", total=num_steps):
+        specs = specs.to(device)
+        labels = labels.to(device)
+        weights = weights.to(device)
+        predictions = model(specs)
+        result = _evaluate(predictions, labels, weights)
 
         optimizer.zero_grad()
         result["loss"].backward()
@@ -44,15 +45,18 @@ def _train_epoch(loader, model, optimizer, scheduler, device):
     return {key: torch.stack(value).mean().item() for key, value in results.items()}
 
 
-def _validate_epoch(validation_iterator, model, device):
+def _validate_epoch(validation_iterator, model, num_steps, device):
     results = defaultdict(list)
     model.eval()
     with torch.no_grad():
-        for spec, label in tqdm(validation_iterator, desc="validating"):
-            spec = spec.to(device)
-            label = label.to(device)
-            prediction = model(spec)
-            result = _evaluate_prediction(prediction, label)
+        for specs, labels, weights in tqdm(
+            validation_iterator, desc="validating", total=num_steps
+        ):
+            specs = specs.to(device)
+            labels = labels.to(device)
+            weights = weights.to(device)
+            predictions = model(specs)
+            result = _evaluate(predictions, labels, weights)
 
             for key, value in result.items():
                 results[key].append(value)
@@ -78,29 +82,31 @@ def train_onsets_detector(
 ):
     num_epochs = 20
     device = torch.device(device)
-    train_dataset = OnsetsDataset(train_dataset_path, min_length=150, max_length=12000)
+
+    train_dataset = OnsetsDataset(
+        train_dataset_path, shuffle=True, min_length=150, max_length=12000
+    )
     train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset,
-        batch_size=1,
-        shuffle=True,
-        num_workers=1,
-        drop_last=False,
+        dataset=train_dataset, batch_size=1, num_workers=1, drop_last=False,
     )
-    validation_dataset = OnsetsDataset(validation_dataset_path)
+    num_train_steps = sum(1 for _ in train_loader)
+    validation_dataset = OnsetsDataset(validation_dataset_path, shuffle=False)
     validation_loader = torch.utils.data.DataLoader(
-        dataset=validation_dataset,
-        batch_size=1,
-        shuffle=True,
-        num_workers=1,
-        drop_last=False,
+        dataset=validation_dataset, batch_size=1, num_workers=1, drop_last=False,
     )
+    num_validation_steps = sum(1 for _ in validation_loader)
+
     model = OnsetsDetector().to(device)
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.003, steps_per_epoch=len(train_loader), epochs=num_epochs
+        optimizer, max_lr=0.003, steps_per_epoch=num_train_steps, epochs=num_epochs
     )
 
     for epoch in range(1, num_epochs + 1):
-        train_result = _train_epoch(train_loader, model, optimizer, scheduler, device)
-        validation_result = _validate_epoch(validation_loader, model, device)
+        train_result = _train_epoch(
+            train_loader, model, optimizer, scheduler, num_train_steps, device
+        )
+        validation_result = _validate_epoch(
+            validation_loader, model, num_validation_steps, device
+        )
         _log_results(epoch, train_result, validation_result)
