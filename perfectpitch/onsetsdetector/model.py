@@ -15,7 +15,6 @@ class _Conv2dResidualBlock(torch.nn.Module):
                 dilation=(1, dilation),
             )
         )
-        self.dropout1 = torch.nn.Dropout(0.2)
         self.conv2 = torch.nn.utils.weight_norm(
             torch.nn.Conv2d(
                 in_channels=out_channels,
@@ -24,7 +23,6 @@ class _Conv2dResidualBlock(torch.nn.Module):
                 padding=(1, 1),
             )
         )
-        self.dropout2 = torch.nn.Dropout(0.2)
 
         self.downsample = None
         if in_channels != out_channels:
@@ -37,10 +35,8 @@ class _Conv2dResidualBlock(torch.nn.Module):
     def forward(self, input_):
         x = self.conv1(input_)
         x = torch.nn.functional.relu(x)
-        x = self.dropout1(x)
         x = self.conv2(x)
         x = torch.nn.functional.relu(x)
-        x = self.dropout2(x)
 
         res = self.downsample(input_) if self.downsample is not None else input_
         return torch.nn.functional.relu(res + x)
@@ -55,14 +51,14 @@ class OnsetsDetector(torch.nn.Module):
             _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=2),
             _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=4),
             _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=8),
-            _Conv2dResidualBlock(in_channels=16, out_channels=32, dilation=16),
-            _Conv2dResidualBlock(in_channels=32, out_channels=32, dilation=32),
-            _Conv2dResidualBlock(in_channels=32, out_channels=32, dilation=64),
-            _Conv2dResidualBlock(in_channels=32, out_channels=32, dilation=128),
+            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=16),
+            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=32),
+            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=64),
+            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=128),
         )
         self.linear_stack = torch.nn.Sequential(
             torch.nn.Conv1d(
-                in_channels=num_pitches * 32, out_channels=256, kernel_size=1
+                in_channels=num_pitches * 16, out_channels=256, kernel_size=1
             ),
             torch.nn.ReLU(),
             torch.nn.Conv1d(in_channels=256, out_channels=num_pitches, kernel_size=1),
