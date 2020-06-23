@@ -3,6 +3,7 @@ from collections import defaultdict
 import torch
 from tqdm import tqdm
 
+from perfectpitch.utils.dataloader import padded_collate
 from .dataset import OnsetsDataset
 from .model import OnsetsDetector
 
@@ -84,10 +85,14 @@ def train_onsets_detector(
     device = torch.device(device)
 
     train_dataset = OnsetsDataset(
-        train_dataset_path, shuffle=True, min_length=150, max_length=12000
+        train_dataset_path, shuffle=True, min_length=500, max_length=2000
     )
     train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset, batch_size=1, num_workers=1, drop_last=False,
+        dataset=train_dataset,
+        batch_size=8,
+        collate_fn=padded_collate,
+        num_workers=1,
+        drop_last=True,
     )
     num_train_steps = sum(1 for _ in train_loader)
     validation_dataset = OnsetsDataset(validation_dataset_path, shuffle=False)
