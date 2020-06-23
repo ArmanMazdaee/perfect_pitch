@@ -90,21 +90,26 @@ def train_onsets_detector(
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
         batch_size=8,
-        collate_fn=padded_collate,
         num_workers=1,
+        collate_fn=padded_collate,
+        pin_memory=True,
         drop_last=True,
     )
     num_train_steps = sum(1 for _ in train_loader)
     validation_dataset = OnsetsDataset(validation_dataset_path, shuffle=False)
     validation_loader = torch.utils.data.DataLoader(
-        dataset=validation_dataset, batch_size=1, num_workers=1, drop_last=False,
+        dataset=validation_dataset,
+        batch_size=1,
+        num_workers=1,
+        pin_memory=True,
+        drop_last=False,
     )
     num_validation_steps = sum(1 for _ in validation_loader)
 
     model = OnsetsDetector().to(device)
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.003, steps_per_epoch=num_train_steps, epochs=num_epochs
+        optimizer, max_lr=0.01, steps_per_epoch=num_train_steps, epochs=num_epochs
     )
 
     for epoch in range(1, num_epochs + 1):

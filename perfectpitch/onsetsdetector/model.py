@@ -55,13 +55,17 @@ class OnsetsDetector(torch.nn.Module):
             _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=2),
             _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=4),
             _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=8),
+            _Conv2dResidualBlock(in_channels=16, out_channels=32, dilation=16),
+            _Conv2dResidualBlock(in_channels=32, out_channels=32, dilation=32),
+            _Conv2dResidualBlock(in_channels=32, out_channels=32, dilation=64),
+            _Conv2dResidualBlock(in_channels=32, out_channels=32, dilation=128),
         )
         self.linear_stack = torch.nn.Sequential(
             torch.nn.Conv1d(
-                in_channels=num_pitches * 16, out_channels=64, kernel_size=1
+                in_channels=num_pitches * 32, out_channels=256, kernel_size=1
             ),
             torch.nn.ReLU(),
-            torch.nn.Conv1d(in_channels=64, out_channels=num_pitches, kernel_size=1),
+            torch.nn.Conv1d(in_channels=256, out_channels=num_pitches, kernel_size=1),
         )
 
     def forward(self, spec):
