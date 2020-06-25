@@ -28,7 +28,7 @@ class OnsetsDataset(TranscriptionDataset):
             )
             onsets = pianoroll["onsets"]
             weights = torch.ones_like(onsets)
-            weights[onsets == 1] = 3
+            weights[onsets == 1] = 2
 
             step = length if self._max_length is None else self._max_length
             for start in range(0, length, step):
