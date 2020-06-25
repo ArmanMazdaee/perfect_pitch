@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 
 import torch
@@ -78,6 +79,12 @@ def _log_results(epoch, train_result, validation_result):
         print("{: >20} {: >20} {: >20}".format(key, train, validation))
 
 
+def _save_model(model, epoch, model_dir):
+    state_dict = model.state_dict()
+    path = os.path.join(model_dir, f"epoch-{epoch}.pt")
+    torch.save(state_dict, path)
+
+
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
@@ -120,3 +127,4 @@ def train_onsets_detector(
             validation_loader, model, num_validation_steps, device
         )
         _log_results(epoch, train_result, validation_result)
+        _save_model(model, epoch, model_dir)
