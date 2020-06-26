@@ -26,7 +26,7 @@ def _evaluate(predictions, labels, weights):
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
-    num_epochs = 40
+    num_epochs = 60
     device = torch.device(device)
 
     train_dataset = OnsetsDataset(

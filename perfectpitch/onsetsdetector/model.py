@@ -47,18 +47,18 @@ class OnsetsDetector(torch.nn.Module):
         super().__init__()
         num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
         self.conv2d_stack = torch.nn.Sequential(
-            _Conv2dResidualBlock(in_channels=1, out_channels=16, dilation=1),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=2),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=4),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=8),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=16),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=32),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=64),
-            _Conv2dResidualBlock(in_channels=16, out_channels=16, dilation=128),
+            _Conv2dResidualBlock(in_channels=1, out_channels=8, dilation=1),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=2),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=4),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=8),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=16),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=32),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=64),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=128),
         )
         self.linear_stack = torch.nn.Sequential(
             torch.nn.Conv1d(
-                in_channels=num_pitches * 16, out_channels=256, kernel_size=1
+                in_channels=num_pitches * 8, out_channels=256, kernel_size=1
             ),
             torch.nn.ReLU(),
             torch.nn.Conv1d(in_channels=256, out_channels=num_pitches, kernel_size=1),
