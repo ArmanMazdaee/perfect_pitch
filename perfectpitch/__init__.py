@@ -107,6 +107,13 @@ def main():
         help="Path of the dataset",
         dest="dataset_path",
     )
+    evaluate_transcriber_parser.add_argument(
+        "--onsets-detector",
+        "-o",
+        required=True,
+        help="Path of the onsets deterctor weights",
+        dest="onsets_detector_path",
+    )
 
     args = parser.parse_args()
     func = args.func
