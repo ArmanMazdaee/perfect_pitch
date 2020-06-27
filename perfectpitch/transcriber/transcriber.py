@@ -10,17 +10,19 @@ class Transcriber:
         self.onsets_detector.load_state_dict(
             torch.load(onsets_detector_path, map_location=torch.device("cpu"))
         )
+        self.onsets_detector.eval()
 
     def __call__(self, spec):
-        spec = spec.unsqueeze(0)
+        with torch.no_grad():
+            spec = spec.unsqueeze(0)
 
-        onsets_logits = self.onsets_detector(spec)
-        onsets_logits = onsets_logits.squeeze(0)
-        onsets = torch.zeros_like(onsets_logits)
-        onsets[onsets_logits > 0] = 1
+            onsets_logits = self.onsets_detector(spec)
+            onsets_logits = onsets_logits.squeeze(0)
+            onsets = torch.zeros_like(onsets_logits)
+            onsets[onsets_logits > 0] = 1
 
-        actives = torch.zeros_like(onsets)
-        offsets = torch.zeros_like(onsets)
-        velocities = torch.zeros_like(onsets)
+            actives = torch.zeros_like(onsets)
+            offsets = torch.zeros_like(onsets)
+            velocities = torch.zeros_like(onsets)
 
         return pianoroll_to_notesequence(actives, onsets, offsets, velocities)
