@@ -225,18 +225,23 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
     num_frames = actives.shape[1]
     notes = []
 
+    actives = actives.tolist()
+    onsets = onsets.tolist()
+    offsets = offsets.tolist()
+    velocities = velocities.tolist()
+
     for pitch in range(num_pitches):
         start_frame = None
         for frame in range(num_frames):
-            is_onset = onsets[pitch, frame] >= 0.5
-            is_previous_onset = onsets[pitch, frame - 1] >= 0.5 if frame > 0 else False
-            is_offset = offsets[pitch, frame] >= 0.5 or actives[pitch, frame] < 0.5
+            is_onset = onsets[pitch][frame] >= 0.5
+            is_previous_onset = onsets[pitch][frame - 1] >= 0.5 if frame > 0 else False
+            is_offset = offsets[pitch][frame] >= 0.5 or actives[pitch][frame] < 0.5
 
             if (is_offset and start_frame is not None) or (
                 is_onset and start_frame is not None and not is_previous_onset
             ):
                 notes.append(
-                    (pitch, start_frame, frame, velocities[pitch, start_frame])
+                    (pitch, start_frame, frame, velocities[pitch][start_frame])
                 )
                 start_frame = None
 
@@ -245,7 +250,7 @@ def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
 
         if start_frame is not None:
             notes.append(
-                (pitch, start_frame, num_frames, velocities[pitch, start_frame])
+                (pitch, start_frame, num_frames, velocities[pitch][start_frame])
             )
 
     pitches = torch.ByteTensor([note[0] for note in notes]) + constants.MIN_PITCH
