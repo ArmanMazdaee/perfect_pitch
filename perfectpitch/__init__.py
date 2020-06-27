@@ -88,7 +88,7 @@ def main():
     )
     train_onsets_detector_parser.add_argument(
         "--device",
-        "-d",
+        "-D",
         default="cpu",
         help="device to use for training the model",
         dest="device",
@@ -113,6 +113,13 @@ def main():
         required=True,
         help="Path of the onsets deterctor weights",
         dest="onsets_detector_path",
+    )
+    evaluate_transcriber_parser.add_argument(
+        "--device",
+        "-D",
+        default="cpu",
+        help="device to use for the inference",
+        dest="device",
     )
 
     args = parser.parse_args()

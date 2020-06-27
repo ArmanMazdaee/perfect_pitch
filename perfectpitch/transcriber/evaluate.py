@@ -22,10 +22,10 @@ def _evalute(ref_notesequence, est_notesequence):
     return results
 
 
-def evaluate_transcriber(dataset_path, onsets_detector_path):
+def evaluate_transcriber(dataset_path, onsets_detector_path, device):
     dataset = TranscriptionDataset(dataset_path, shuffle=False)
     num_steps = sum(1 for _ in dataset)
-    transcriber = Transcriber(onsets_detector_path)
+    transcriber = Transcriber(onsets_detector_path, device)
     results = defaultdict(list)
     for spec, ref_notesequence in tqdm(dataset, desc="evaluating", total=num_steps):
         est_notesequence = transcriber(spec)
