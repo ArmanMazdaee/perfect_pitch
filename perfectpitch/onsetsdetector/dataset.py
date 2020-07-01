@@ -3,7 +3,7 @@ import random
 import torch
 
 from perfectpitch.dataset.transcription_dataset import TranscriptionDataset
-from perfectpitch.utils.data import notesequence_to_pianoroll
+from perfectpitch.utils.data import transcription_to_pianoroll
 
 
 class OnsetsDataset(TranscriptionDataset):
@@ -18,12 +18,12 @@ class OnsetsDataset(TranscriptionDataset):
         buffer_size = self._buffer_size if self._shuffle else 1
         buffer = []
 
-        for spec, notesequence in super().__iter__():
+        for spec, transcription in super().__iter__():
             length = spec.shape[1]
-            pianoroll = notesequence_to_pianoroll(
-                notesequence["pitches"],
-                notesequence["intervals"],
-                notesequence["velocities"],
+            pianoroll = transcription_to_pianoroll(
+                transcription["pitches"],
+                transcription["intervals"],
+                transcription["velocities"],
                 length,
             )
             onsets = pianoroll["onsets"]

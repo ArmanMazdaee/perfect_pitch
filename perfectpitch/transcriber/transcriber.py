@@ -1,7 +1,7 @@
 import torch
 
 from perfectpitch.onsetsdetector.model import OnsetsDetector
-from perfectpitch.utils.data import pianoroll_to_notesequence
+from perfectpitch.utils.data import pianoroll_to_transcription
 
 
 class Transcriber:
@@ -30,4 +30,4 @@ class Transcriber:
         offsets = torch.zeros_like(onsets)
         velocities = torch.zeros_like(onsets)
 
-        return pianoroll_to_notesequence(actives, onsets, offsets, velocities)
+        return pianoroll_to_transcription(actives, onsets, offsets, velocities)

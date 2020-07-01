@@ -77,7 +77,7 @@ def spec_to_audio(spec):
     return audio
 
 
-def load_notesequence(path):
+def load_transcription(path):
     midi = mido.MidiFile(path)
 
     if midi.type != 0 and midi.type != 1:
@@ -149,7 +149,7 @@ def load_notesequence(path):
     }
 
 
-def save_notesequence(path, pitches, intervals, velocities):
+def save_transcription(path, pitches, intervals, velocities):
     midi = mido.MidiFile()
     track = mido.MidiTrack()
     midi.tracks.append(track)
@@ -178,7 +178,7 @@ def save_notesequence(path, pitches, intervals, velocities):
     midi.save(path)
 
 
-def notesequence_to_pianoroll(pitches, intervals, velocities, num_frames=None):
+def transcription_to_pianoroll(pitches, intervals, velocities, num_frames=None):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
     num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
     if num_frames is None:
@@ -219,7 +219,7 @@ def notesequence_to_pianoroll(pitches, intervals, velocities, num_frames=None):
     }
 
 
-def pianoroll_to_notesequence(actives, onsets, offsets, velocities):
+def pianoroll_to_transcription(actives, onsets, offsets, velocities):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
     num_pitches = actives.shape[0]
     num_frames = actives.shape[1]
