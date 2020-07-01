@@ -6,7 +6,7 @@ from tqdm import tqdm
 from perfectpitch.utils.data import load_audio, load_transcription, audio_to_spec
 
 
-def create_transcription_dataset(output_path, names, wav_filenames, midi_filenames):
+def convert_dataset(output_path, names, wav_filenames, midi_filenames):
     os.makedirs(output_path, exist_ok=True)
     for name, wav_filename, midi_filename in tqdm(
         zip(names, wav_filenames, midi_filenames),

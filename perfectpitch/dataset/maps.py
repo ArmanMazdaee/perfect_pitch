@@ -2,7 +2,7 @@ import os
 import re
 from glob import glob
 
-from .create_transcription_dataset import create_transcription_dataset
+from .convert_dataset import convert_dataset
 
 
 def _id_from_filename(filename):
@@ -50,7 +50,7 @@ def convert_maps(input_path, output_path):
     }
 
     for split in ["train", "validation"]:
-        create_transcription_dataset(
+        convert_dataset(
             os.path.join(output_path, split),
             split_names[split],
             split_wav_filenames[split],

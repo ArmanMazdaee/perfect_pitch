@@ -1,7 +1,7 @@
 import os
 import json
 
-from .create_transcription_dataset import create_transcription_dataset
+from .convert_dataset import convert_dataset
 
 
 def convert_maestro(input_path, output_path):
@@ -25,6 +25,6 @@ def convert_maestro(input_path, output_path):
             for sample in info
             if sample["split"] == split
         ]
-        create_transcription_dataset(
+        convert_dataset(
             os.path.join(output_path, split), names, wav_filenames, midi_filenames,
         )
