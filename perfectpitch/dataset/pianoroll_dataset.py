@@ -1,12 +1,11 @@
 import random
+from collections import deque
 
-import torch
-
-from perfectpitch.dataset.transcription_dataset import TranscriptionDataset
 from perfectpitch.utils.data import transcription_to_pianoroll
+from .transcription_dataset import TranscriptionDataset
 
 
-class OnsetsDataset(TranscriptionDataset):
+class PianorollDataset(TranscriptionDataset):
     def __init__(self, path, shuffle, min_length=None, max_length=None, buffer_size=64):
         super().__init__(path, shuffle)
         self._min_length = min_length
@@ -16,7 +15,7 @@ class OnsetsDataset(TranscriptionDataset):
     def __iter__(self):
         min_length = 0 if self._min_length is None else self._min_length
         buffer_size = self._buffer_size if self._shuffle else 1
-        buffer = []
+        buffer = deque()
 
         for spec, transcription in super().__iter__():
             length = spec.shape[1]
@@ -26,9 +25,6 @@ class OnsetsDataset(TranscriptionDataset):
                 transcription["velocities"],
                 length,
             )
-            onsets = pianoroll["onsets"]
-            weights = torch.ones_like(onsets)
-            weights[onsets == 1] = 2
 
             step = length if self._max_length is None else self._max_length
             for start in range(0, length, step):
@@ -37,13 +33,16 @@ class OnsetsDataset(TranscriptionDataset):
                     break
 
                 buffer.append(
-                    (spec[:, start:end], onsets[:, start:end], weights[:, start:end])
+                    (
+                        spec[:, start:end],
+                        {key: value[:, start:end] for key, value in pianoroll.items()},
+                    )
                 )
 
             if self._shuffle:
                 random.shuffle(buffer)
 
             while len(buffer) > buffer_size:
-                yield buffer.pop()
+                yield buffer.popleft()
 
         yield from buffer
