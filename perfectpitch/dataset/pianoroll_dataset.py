@@ -17,7 +17,9 @@ class PianorollDataset(TranscriptionDataset):
         buffer_size = self._buffer_size if self._shuffle else 1
         buffer = deque()
 
-        for spec, transcription in super().__iter__():
+        for sample in super().__iter__():
+            spec = sample["spec"]
+            transcription = sample["transcription"]
             length = spec.shape[1]
             pianoroll = transcription_to_pianoroll(
                 transcription["pitches"],
@@ -33,10 +35,12 @@ class PianorollDataset(TranscriptionDataset):
                     break
 
                 buffer.append(
-                    (
-                        spec[:, start:end],
-                        {key: value[:, start:end] for key, value in pianoroll.items()},
-                    )
+                    {
+                        "spec": spec[:, start:end],
+                        "pianoroll": {
+                            key: value[:, start:end] for key, value in pianoroll.items()
+                        },
+                    }
                 )
 
             if self._shuffle:

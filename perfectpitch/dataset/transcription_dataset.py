@@ -28,11 +28,11 @@ class TranscriptionDataset(torch.utils.data.IterableDataset):
 
         for sample_filename in sample_filenames:
             sample = torch.load(sample_filename)
-            yield (
-                sample["spec"],
-                {
+            yield {
+                "spec": sample["spec"],
+                "transcription": {
                     "pitches": sample["pitches"],
                     "intervals": sample["intervals"],
                     "velocities": sample["velocities"],
                 },
-            )
+            }
