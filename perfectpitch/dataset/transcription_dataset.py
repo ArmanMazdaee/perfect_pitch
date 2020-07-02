@@ -7,13 +7,18 @@ import torch
 
 class TranscriptionDataset(torch.utils.data.IterableDataset):
     def __init__(self, path, shuffle):
-        self._path = path
+        sample_filenames = sorted(glob(os.path.join(path, "*.pt")))
+        if len(sample_filenames) == 0:
+            raise ValueError(f"No sample found in {path}")
+
+        self._sample_filenames = sample_filenames
         self._shuffle = shuffle
 
+    def __len__(self):
+        return len(self._sample_filenames)
+
     def __iter__(self):
-        sample_filenames = sorted(glob(os.path.join(self._path, "*.pt")))
-        if len(sample_filenames) == 0:
-            raise RuntimeError(f"No sample found in {self._path}")
+        sample_filenames = self._sample_filenames
 
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is not None:

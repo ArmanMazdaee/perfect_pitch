@@ -12,11 +12,29 @@ class PianorollDataset(TranscriptionDataset):
         self._max_length = max_length
         self._buffer_size = buffer_size
 
-    def __iter__(self):
+    def _get_splits(self, length):
+        splits = []
         min_length = 0 if self._min_length is None else self._min_length
+        step = length if self._max_length is None else self._max_length
+        for start in range(0, length, step):
+            end = min(length, start + step)
+            if end - start >= min_length:
+                splits.append((start, end))
+        return splits
+
+    def __len__(self):
+        total = 0
+        for sample in super().__iter__():
+            spec = sample["spec"]
+            length = spec.shape[1]
+            splits = self._get_splits(length)
+            total += len(splits)
+
+        return total
+
+    def __iter__(self):
         buffer_size = self._buffer_size if self._shuffle else 1
         buffer = deque()
-
         for sample in super().__iter__():
             spec = sample["spec"]
             transcription = sample["transcription"]
@@ -28,12 +46,7 @@ class PianorollDataset(TranscriptionDataset):
                 length,
             )
 
-            step = length if self._max_length is None else self._max_length
-            for start in range(0, length, step):
-                end = min(length, start + step)
-                if end - start < min_length:
-                    break
-
+            for start, end in self._get_splits(length):
                 buffer.append(
                     {
                         "spec": spec[:, start:end],
