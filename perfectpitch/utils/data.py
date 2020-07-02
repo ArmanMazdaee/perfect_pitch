@@ -46,32 +46,37 @@ def audio_to_spec(audio):
     real_kernel = (torch.sin(real_points) * torch.hann_window(win_length)).unsqueeze(1)
     imag_kernel = (torch.sin(imag_points) * torch.hann_window(win_length)).unsqueeze(1)
 
-    real_spec = torch.nn.functional.conv1d(
-        audio, real_kernel, stride=constants.SPEC_HOP_LENGTH
-    ).squeeze(0)
-    imag_spec = torch.nn.functional.conv1d(
-        audio, imag_kernel, stride=constants.SPEC_HOP_LENGTH
-    ).squeeze(0)
+    real_spec = (
+        torch.nn.functional.conv1d(audio, real_kernel, stride=constants.SPEC_HOP_LENGTH)
+        .squeeze(0)
+        .T
+    )
+    imag_spec = (
+        torch.nn.functional.conv1d(audio, imag_kernel, stride=constants.SPEC_HOP_LENGTH)
+        .squeeze(0)
+        .T
+    )
     spec = torch.sqrt((real_spec ** 2) + (imag_spec ** 2))
     return spec
 
 
 def spec_to_audio(spec):
-    repeated_spec = spec.repeat_interleave(constants.SPEC_HOP_LENGTH, dim=1)
+    repeated_spec = spec.repeat_interleave(constants.SPEC_HOP_LENGTH, dim=0)
     pitches = torch.arange(constants.MIN_PITCH, constants.MAX_PITCH + 1)
     frequencies = 440 * (2 ** ((pitches - 69) / 12.0))
     points = torch.stack(
         [
             torch.linspace(
                 start=0,
-                end=f * 2 * math.pi * repeated_spec.shape[1] / constants.SAMPLE_RATE,
-                steps=repeated_spec.shape[1],
+                end=f * 2 * math.pi * repeated_spec.shape[0] / constants.SAMPLE_RATE,
+                steps=repeated_spec.shape[0],
             )
             for f in frequencies
-        ]
+        ],
+        dim=1,
     )
     sins = torch.sin(points)
-    audio = (sins * repeated_spec).sum(dim=0)
+    audio = (sins * repeated_spec).sum(dim=1)
     audio = audio - audio.mean()
     audio = audio / audio.abs().max()
     return audio
@@ -195,21 +200,21 @@ def transcription_to_pianoroll(pitches, intervals, velocities, num_frames=None):
     intervals = intervals[valid_indices]
     velocities = velocities[valid_indices]
 
-    active_frames = torch.zeros([num_pitches, num_frames])
+    active_frames = torch.zeros([num_frames, num_pitches])
     onset_frames = torch.zeros_like(active_frames)
     offset_frames = torch.zeros_like(active_frames)
     velocity_frames = torch.zeros_like(active_frames)
 
     for index in range(len(pitches)):
         pitch = pitches[index].item()
-        onset = intervals[index][0].item()
-        offset = intervals[index][1].item()
+        onset = intervals[index, 0].item()
+        offset = intervals[index, 1].item()
         velocity = velocities[index].item()
 
-        active_frames[pitch, onset:offset] = 1
-        onset_frames[pitch, onset] = 1
-        offset_frames[pitch, offset] = 1
-        velocity_frames[pitch, onset:offset] = velocity
+        active_frames[onset:offset, pitch] = 1
+        onset_frames[onset, pitch] = 1
+        offset_frames[offset, pitch] = 1
+        velocity_frames[onset:offset, pitch] = velocity
 
     return {
         "actives": active_frames,
@@ -221,8 +226,8 @@ def transcription_to_pianoroll(pitches, intervals, velocities, num_frames=None):
 
 def pianoroll_to_transcription(actives, onsets, offsets, velocities):
     frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
-    num_pitches = actives.shape[0]
-    num_frames = actives.shape[1]
+    num_pitches = actives.shape[1]
+    num_frames = actives.shape[0]
     notes = []
 
     actives = actives.tolist()
@@ -233,15 +238,15 @@ def pianoroll_to_transcription(actives, onsets, offsets, velocities):
     for pitch in range(num_pitches):
         start_frame = None
         for frame in range(num_frames):
-            is_onset = onsets[pitch][frame] >= 0.5
-            is_previous_onset = onsets[pitch][frame - 1] >= 0.5 if frame > 0 else False
-            is_offset = offsets[pitch][frame] >= 0.5 or actives[pitch][frame] < 0.5
+            is_onset = onsets[frame][pitch] >= 0.5
+            is_previous_onset = onsets[frame - 1][pitch] >= 0.5 if frame > 0 else False
+            is_offset = offsets[frame][pitch] >= 0.5 or actives[frame][pitch] < 0.5
 
             if (is_offset and start_frame is not None) or (
                 is_onset and start_frame is not None and not is_previous_onset
             ):
                 notes.append(
-                    (pitch, start_frame, frame, velocities[pitch][start_frame])
+                    (pitch, start_frame, frame, velocities[start_frame][pitch])
                 )
                 start_frame = None
 
@@ -250,7 +255,7 @@ def pianoroll_to_transcription(actives, onsets, offsets, velocities):
 
         if start_frame is not None:
             notes.append(
-                (pitch, start_frame, num_frames, velocities[pitch][start_frame])
+                (pitch, start_frame, num_frames, velocities[start_frame][pitch])
             )
 
     pitches = torch.ByteTensor([note[0] for note in notes]) + constants.MIN_PITCH

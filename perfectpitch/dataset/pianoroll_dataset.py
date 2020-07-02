@@ -26,7 +26,7 @@ class PianorollDataset(TranscriptionDataset):
         total = 0
         for sample in super().__iter__():
             spec = sample["spec"]
-            length = spec.shape[1]
+            length = spec.shape[0]
             splits = self._get_splits(length)
             total += len(splits)
 
@@ -38,7 +38,7 @@ class PianorollDataset(TranscriptionDataset):
         for sample in super().__iter__():
             spec = sample["spec"]
             transcription = sample["transcription"]
-            length = spec.shape[1]
+            length = spec.shape[0]
             pianoroll = transcription_to_pianoroll(
                 transcription["pitches"],
                 transcription["intervals"],
@@ -49,9 +49,9 @@ class PianorollDataset(TranscriptionDataset):
             for start, end in self._get_splits(length):
                 buffer.append(
                     {
-                        "spec": spec[:, start:end],
+                        "spec": spec[start:end, :],
                         "pianoroll": {
-                            key: value[:, start:end] for key, value in pianoroll.items()
+                            key: value[start:end, :] for key, value in pianoroll.items()
                         },
                     }
                 )
