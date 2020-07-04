@@ -65,8 +65,10 @@ class OnsetsDetector(torch.nn.Module):
         )
 
     def forward(self, spec):
-        x = spec.unsqueeze(dim=1)
+        x = spec.premute(1, 2, 0)
+        x = x.unsqueeze(dim=1)
         x = self.conv2d_stack(x)
         x = x.flatten(start_dim=1, end_dim=2)
         x = self.linear_stack(x)
+        x = x.permute(2, 0, 1)
         return x
