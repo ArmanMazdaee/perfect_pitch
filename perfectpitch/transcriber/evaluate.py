@@ -24,12 +24,13 @@ def _evalute(ref_transcription, est_transcription):
 
 def evaluate_transcriber(dataset_path, onsets_detector_path, device):
     dataset = TranscriptionDataset(dataset_path, shuffle=False)
-    num_steps = sum(1 for _ in dataset)
     transcriber = Transcriber(onsets_detector_path, device)
     results = defaultdict(list)
-    for spec, ref_transcription in tqdm(dataset, desc="evaluating", total=num_steps):
-        ref_transcription = transcriber(spec)
-        score = _evalute(ref_transcription, ref_transcription)
+    for sample in tqdm(dataset, desc="evaluating"):
+        spec = sample["spec"]
+        ref_transcription = sample["transcription"]
+        est_transcription = transcriber(spec)
+        score = _evalute(ref_transcription, est_transcription)
         for key, value in score.items():
             results[key].append(value)
 

@@ -18,10 +18,10 @@ class Transcriber:
     def __call__(self, spec):
         with torch.no_grad():
             spec = spec.to(self._device)
-            spec = spec.unsqueeze(0)
+            spec = spec.unsqueeze(1)
 
             onsets_logits = self._onsets_detector(spec)
-            onsets_logits = onsets_logits.squeeze(0)
+            onsets_logits = onsets_logits.squeeze(1)
             onsets = torch.zeros_like(onsets_logits)
             onsets[onsets_logits > 0] = 1
 
