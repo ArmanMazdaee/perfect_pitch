@@ -12,15 +12,15 @@ def _evaluate_batch(onsets_detector, batch, device):
     spec = batch["spec"].to(device)
     onsets = batch["pianoroll"]["onsets"].to(device)
     mask = batch["mask"].to(device)
-    predictions = onsets_detector(spec)
+    prediction = onsets_detector(spec)
     label = onsets[mask]
-    prediction = predictions[mask]
+    prediction = prediction[mask]
 
     loss = torch.nn.functional.binary_cross_entropy_with_logits(
         prediction, label, pos_weight=torch.tensor(3.0)
     )
 
-    positive = torch.zeros_like(predictions)
+    positive = torch.zeros_like(prediction)
     positive[(prediction >= 0)] = 1
     true = torch.zeros_like(label)
     true[(label >= 0.5)] = 1
