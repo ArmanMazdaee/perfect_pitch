@@ -5,15 +5,11 @@ import torch
 from tqdm import tqdm
 
 
-def _train_epoch(train_loader, model, evaluate, optimizer, scheduler, epoch, device):
+def _train_epoch(loader, model, evaluate_batch, optimizer, scheduler):
     results = defaultdict(list)
     model.train()
-    for inputs, labels, weights in tqdm(train_loader, desc=f"training epoch {epoch}"):
-        inputs = inputs.to(device)
-        labels = labels.to(device)
-        weights = weights.to(device)
-        predictions = model(inputs)
-        result = evaluate(predictions, labels, weights)
+    for batch in tqdm(loader, desc="training"):
+        result = evaluate_batch(model, batch)
 
         optimizer.zero_grad()
         result["loss"].backward()
@@ -26,18 +22,12 @@ def _train_epoch(train_loader, model, evaluate, optimizer, scheduler, epoch, dev
     return {key: torch.stack(value).mean().item() for key, value in results.items()}
 
 
-def _validate_epoch(validation_loader, model, evaluate, epoch, device):
+def _validate_epoch(loader, model, evaluate_batch):
     results = defaultdict(list)
     model.eval()
-    for inputs, labels, weights in tqdm(
-        validation_loader, desc=f"validating epoch {epoch}"
-    ):
-        inputs = inputs.to(device)
-        labels = labels.to(device)
-        weights = weights.to(device)
+    for batch in tqdm(loader, desc="validating"):
         with torch.no_grad():
-            predictions = model(inputs)
-            result = evaluate(predictions, labels, weights)
+            result = evaluate_batch(model, batch)
 
         for key, value in result.items():
             results[key].append(value.detach())
@@ -58,30 +48,23 @@ def _print_result(train_result, validation_result, epoch):
         print("{: >20} {: >20} {: >20}".format(key, train, validation))
 
 
-def _save_model(model, epoch, model_dir):
-    state_dict = model.state_dict()
-    path = os.path.join(model_dir, f"weights-epoch-{epoch}.pt")
-    torch.save(state_dict, path)
-
-
 def train_model(
     train_loader,
     validation_loader,
     model,
-    evaluate,
+    evaluate_batch,
     optimizer,
     scheduler,
     num_epochs,
-    device,
     model_dir,
 ):
     os.makedirs(model_dir, exist_ok=True)
     for epoch in range(1, num_epochs + 1):
         train_result = _train_epoch(
-            train_loader, model, evaluate, optimizer, scheduler, epoch, device
+            train_loader, model, evaluate_batch, optimizer, scheduler
         )
-        validation_result = _validate_epoch(
-            validation_loader, model, evaluate, epoch, device
+        validation_result = _validate_epoch(validation_loader, model, evaluate_batch)
+        torch.save(
+            model.state_dict(), os.path.join(model_dir, f"weights-epoch-{epoch}.pt")
         )
         _print_result(train_result, validation_result, epoch)
-        _save_model(model, epoch, model_dir)
