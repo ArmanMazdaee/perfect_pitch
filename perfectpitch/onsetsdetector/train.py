@@ -1,3 +1,5 @@
+import functools
+
 import torch
 
 from perfectpitch.dataset.pianoroll_dataset import PianorollDataset
@@ -66,7 +68,7 @@ def train_onsets_detector(
         train_loader,
         validation_loader,
         onsets_detector,
-        _evaluate_batch,
+        functools.partial(_evaluate_batch, device=device),
         optimizer,
         scheduler,
         num_epochs,
