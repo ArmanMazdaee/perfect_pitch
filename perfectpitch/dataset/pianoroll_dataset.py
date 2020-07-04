@@ -1,6 +1,8 @@
 import random
 from collections import deque
 
+import torch
+
 from perfectpitch.utils.data import transcription_to_pianoroll
 from .transcription_dataset import TranscriptionDataset
 
@@ -45,6 +47,7 @@ class PianorollDataset(TranscriptionDataset):
                 transcription["velocities"],
                 length,
             )
+            mask = torch.ones(length, dtype=torch.bool)
 
             for start, end in self._get_splits(length):
                 buffer.append(
@@ -53,6 +56,7 @@ class PianorollDataset(TranscriptionDataset):
                         "pianoroll": {
                             key: value[start:end, :] for key, value in pianoroll.items()
                         },
+                        "mask": mask[start:end],
                     }
                 )
 
