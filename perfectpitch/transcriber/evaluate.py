@@ -8,11 +8,11 @@ from .transcriber import Transcriber
 
 
 def _evalute(ref_transcription, est_transcription):
-    ref_pitches = mir_eval.util.midi_to_hz(ref_transcription["pitches"].numpy())
-    ref_intervals = ref_transcription["intervals"].numpy()
+    ref_pitches = mir_eval.util.midi_to_hz(ref_transcription["pitches"])
+    ref_intervals = ref_transcription["intervals"]
 
-    est_pitches = mir_eval.util.midi_to_hz(ref_transcription["pitches"].numpy())
-    est_intervals = ref_transcription["intervals"].numpy()
+    est_pitches = mir_eval.util.midi_to_hz(ref_transcription["pitches"])
+    est_intervals = ref_transcription["intervals"]
 
     results = {}
     score = mir_eval.transcription.evaluate(

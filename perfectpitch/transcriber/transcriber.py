@@ -1,7 +1,8 @@
+import numpy as np
 import torch
 
 from perfectpitch.onsetsdetector.model import OnsetsDetector
-from perfectpitch.utils.data import pianoroll_to_transcription
+from perfectpitch.utils.transcription import pianoroll_to_transcription
 
 
 class Transcriber:
@@ -17,17 +18,18 @@ class Transcriber:
 
     def __call__(self, spec):
         with torch.no_grad():
-            spec = spec.to(self._device)
+            spec = torch.from_numpy(spec).to(self._device)
             spec = spec.unsqueeze(1)
 
             onsets_logits = self._onsets_detector(spec)
             onsets_logits = onsets_logits.squeeze(1)
-            onsets = torch.zeros_like(onsets_logits)
-            onsets[onsets_logits > 0] = 1
 
-        onsets = onsets.to(torch.device("cpu"))
-        actives = torch.zeros_like(onsets)
-        offsets = torch.zeros_like(onsets)
-        velocities = torch.zeros_like(onsets)
+        onsets_logits = onsets_logits.numpy()
+        onsets = np.zeros_like(onsets_logits)
+        onsets[onsets_logits > 0] = 1
+
+        actives = np.zeros_like(onsets)
+        offsets = np.zeros_like(onsets)
+        velocities = np.zeros_like(onsets)
 
         return pianoroll_to_transcription(actives, onsets, offsets, velocities)
