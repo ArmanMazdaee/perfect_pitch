@@ -2,12 +2,13 @@ import os
 import random
 from glob import glob
 
+import numpy as np
 import torch
 
 
 class TranscriptionDataset(torch.utils.data.IterableDataset):
     def __init__(self, path, shuffle):
-        sample_filenames = sorted(glob(os.path.join(path, "*.pt")))
+        sample_filenames = sorted(glob(os.path.join(path, "*.npz")))
         if len(sample_filenames) == 0:
             raise ValueError(f"No sample found in {path}")
 
@@ -32,7 +33,7 @@ class TranscriptionDataset(torch.utils.data.IterableDataset):
             random.shuffle(sample_filenames)
 
         for sample_filename in sample_filenames:
-            sample = torch.load(sample_filename)
+            sample = np.load(sample_filename)
             yield {
                 "spec": sample["spec"],
                 "transcription": {

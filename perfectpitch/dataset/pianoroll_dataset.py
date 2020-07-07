@@ -1,9 +1,9 @@
 import random
 from collections import deque
 
-import torch
+import numpy as np
 
-from perfectpitch.utils.data import transcription_to_pianoroll
+from perfectpitch.utils.transcription import transcription_to_pianoroll
 from .transcription_dataset import TranscriptionDataset
 
 
@@ -39,15 +39,15 @@ class PianorollDataset(TranscriptionDataset):
         buffer = deque()
         for sample in super().__iter__():
             spec = sample["spec"]
-            transcription = sample["transcription"]
             length = spec.shape[0]
+            transcription = sample["transcription"]
             pianoroll = transcription_to_pianoroll(
                 transcription["pitches"],
                 transcription["intervals"],
                 transcription["velocities"],
                 length,
             )
-            mask = torch.ones(length, dtype=torch.bool)
+            mask = np.ones(length, dtype=np.bool)
 
             for start, end in self._get_splits(length):
                 buffer.append(

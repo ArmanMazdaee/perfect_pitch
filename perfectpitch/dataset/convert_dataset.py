@@ -1,9 +1,10 @@
 import os
 
-import torch
+import numpy as np
 from tqdm import tqdm
 
-from perfectpitch.utils.data import load_audio, load_transcription, audio_to_spec
+from perfectpitch.utils.audio import load_audio, audio_to_spec
+from perfectpitch.utils.transcription import load_transcription
 
 
 def convert_dataset(output_path, names, wav_filenames, midi_filenames):
@@ -16,12 +17,10 @@ def convert_dataset(output_path, names, wav_filenames, midi_filenames):
         audio = load_audio(wav_filename)
         spec = audio_to_spec(audio)
         transcription = load_transcription(midi_filename)
-        torch.save(
-            {
-                "spec": spec,
-                "pitches": transcription["pitches"],
-                "intervals": transcription["intervals"],
-                "velocities": transcription["velocities"],
-            },
-            os.path.join(output_path, f"{name}.pt"),
+        np.savez(
+            os.path.join(output_path, f"{name}.npz"),
+            spec=spec,
+            pitches=transcription["pitches"],
+            intervals=transcription["intervals"],
+            velocities=transcription["velocities"],
         )
