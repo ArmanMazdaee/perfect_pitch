@@ -128,7 +128,7 @@ def transcription_to_pianoroll(pitches, intervals, velocities, num_frames=None):
     intervals = intervals[valid_indices].tolist()
     velocities = velocities[valid_indices].tolist()
 
-    active_frames = np.zeros([num_frames, num_pitches])
+    active_frames = np.zeros([num_frames, num_pitches], dtype=np.float32)
     onset_frames = np.zeros_like(active_frames)
     offset_frames = np.zeros_like(active_frames)
     velocity_frames = np.zeros_like(active_frames)
