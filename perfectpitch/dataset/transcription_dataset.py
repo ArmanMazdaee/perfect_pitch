@@ -36,6 +36,7 @@ class TranscriptionDataset(torch.utils.data.IterableDataset):
             sample = np.load(sample_filename)
             yield {
                 "spec": sample["spec"],
+                "posenc": sample["posenc"],
                 "transcription": {
                     "pitches": sample["pitches"],
                     "intervals": sample["intervals"],

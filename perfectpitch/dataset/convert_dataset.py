@@ -4,7 +4,7 @@ import multiprocessing
 import numpy as np
 from tqdm import tqdm
 
-from perfectpitch.utils.audio import load_audio, audio_to_spec
+from perfectpitch.utils.audio import load_audio, audio_to_spec, audio_to_posenc
 from perfectpitch.utils.transcription import load_transcription
 
 
@@ -12,10 +12,12 @@ def _convert_sample(args):
     sample_filenames, wav_filename, midi_filename = args
     audio = load_audio(wav_filename)
     spec = audio_to_spec(audio)
+    posenc = audio_to_posenc(audio, len(spec))
     transcription = load_transcription(midi_filename)
     np.savez(
         sample_filenames,
         spec=spec,
+        posenc=posenc,
         pitches=transcription["pitches"],
         intervals=transcription["intervals"],
         velocities=transcription["velocities"],
