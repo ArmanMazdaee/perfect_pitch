@@ -15,9 +15,6 @@ class TranscriptionDataset(torch.utils.data.IterableDataset):
         self._sample_filenames = sample_filenames
         self._shuffle = shuffle
 
-    def __len__(self):
-        return len(self._sample_filenames)
-
     def __iter__(self):
         sample_filenames = self._sample_filenames
 

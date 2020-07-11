@@ -24,16 +24,6 @@ class PianorollDataset(TranscriptionDataset):
                 splits.append((start, end))
         return splits
 
-    def __len__(self):
-        total = 0
-        for sample in super().__iter__():
-            spec = sample["spec"]
-            length = spec.shape[0]
-            splits = self._get_splits(length)
-            total += len(splits)
-
-        return total
-
     def __iter__(self):
         buffer_size = self._buffer_size if self._shuffle else 1
         buffer = deque()
@@ -54,7 +44,7 @@ class PianorollDataset(TranscriptionDataset):
                 buffer.append(
                     {
                         "spec": spec[start:end, :],
-                        "posenc": posenc[:start:end, :],
+                        "posenc": posenc[start:end, :],
                         "pianoroll": {
                             key: value[start:end, :] for key, value in pianoroll.items()
                         },
