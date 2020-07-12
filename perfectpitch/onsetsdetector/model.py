@@ -3,58 +3,72 @@ import torch
 from perfectpitch import constants
 
 
+class _Conv2dResidualBlock(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, dilation):
+        super().__init__()
+        self.conv1 = torch.nn.utils.weight_norm(
+            torch.nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=(3, 3),
+                padding=(1, dilation),
+                dilation=(1, dilation),
+            )
+        )
+        self.conv2 = torch.nn.utils.weight_norm(
+            torch.nn.Conv2d(
+                in_channels=out_channels,
+                out_channels=out_channels,
+                kernel_size=(3, 3),
+                padding=(1, 1),
+            )
+        )
+
+        self.downsample = None
+        if in_channels != out_channels:
+            self.downsample = torch.nn.utils.weight_norm(
+                torch.nn.Conv2d(
+                    in_channels=in_channels, out_channels=out_channels, kernel_size=1
+                )
+            )
+
+    def forward(self, input_):
+        x = self.conv1(input_)
+        x = torch.nn.functional.relu(x)
+        x = self.conv2(x)
+        x = torch.nn.functional.relu(x)
+
+        res = self.downsample(input_) if self.downsample is not None else input_
+        return torch.nn.functional.relu(res + x)
+
+
 class OnsetsDetector(torch.nn.Module):
     def __init__(self):
         super().__init__()
         num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
-        self.conv2d = torch.nn.Sequential(
-            torch.nn.utils.weight_norm(
-                torch.nn.Conv2d(
-                    in_channels=1, out_channels=32, kernel_size=3, padding=1
-                )
-            ),
-            torch.nn.ReLU(),
-            torch.nn.utils.weight_norm(
-                torch.nn.Conv2d(
-                    in_channels=32, out_channels=32, kernel_size=3, padding=1
-                )
-            ),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=(2, 1)),
-            torch.nn.utils.weight_norm(
-                torch.nn.Conv2d(
-                    in_channels=32, out_channels=64, kernel_size=3, padding=1
-                )
-            ),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=(2, 1)),
+        self.conv2d_stack = torch.nn.Sequential(
+            _Conv2dResidualBlock(in_channels=1, out_channels=8, dilation=1),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=2),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=4),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=8),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=16),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=32),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=64),
+            _Conv2dResidualBlock(in_channels=8, out_channels=8, dilation=128),
         )
-        self.linear1 = torch.nn.Sequential(
-            torch.nn.Linear(
-                in_features=(num_pitches // 4) * 64 + constants.POSENC_DIM,
-                out_features=256,
+        self.linear_stack = torch.nn.Sequential(
+            torch.nn.Conv1d(
+                in_channels=num_pitches * 8, out_channels=256, kernel_size=1
             ),
             torch.nn.ReLU(),
+            torch.nn.Conv1d(in_channels=256, out_channels=num_pitches, kernel_size=1),
         )
-        self.sequential = torch.nn.TransformerEncoder(
-            encoder_layer=torch.nn.TransformerEncoderLayer(
-                d_model=256, nhead=4, dim_feedforward=1024, dropout=0, activation="relu"
-            ),
-            num_layers=4,
-            norm=torch.nn.LayerNorm(normalized_shape=256),
-        )
-        self.linear2 = torch.nn.Linear(in_features=256, out_features=num_pitches)
 
     def forward(self, spec, posenc, mask=None):
-        if mask is not None:
-            mask = mask.T
-
-        conv2_input = spec.permute(1, 2, 0).unsqueeze(1)
-        conv2_output = self.conv2d(conv2_input)
-        linear1_input = torch.cat(
-            [conv2_output.flatten(1, 2).permute(2, 0, 1), posenc], dim=2
-        )
-        linear1_output = self.linear1(linear1_input)
-        sequential_output = self.sequential(linear1_output, src_key_padding_mask=mask)
-        linear2_output = self.linear2(sequential_output)
-        return linear2_output
+        x = spec.permute(1, 2, 0)
+        x = x.unsqueeze(dim=1)
+        x = self.conv2d_stack(x)
+        x = x.flatten(start_dim=1, end_dim=2)
+        x = self.linear_stack(x)
+        x = x.permute(2, 0, 1)
+        return x
