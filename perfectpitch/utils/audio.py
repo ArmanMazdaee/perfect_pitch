@@ -20,6 +20,7 @@ def save_audio(path, audio):
 
 def audio_to_spec(audio):
     win_length = 1024
+    audio_length = len(audio)
     before_pad = (win_length - constants.SPEC_HOP_LENGTH) // 2
     after_pad = win_length - before_pad
     audio = np.pad(audio, (before_pad, after_pad), "reflect")
@@ -34,15 +35,15 @@ def audio_to_spec(audio):
         axis=1,
     )
     sins = np.sin(points) + 1j * np.sin(points + 0.5 * np.pi)
-    kernel = sins * np.hanning(win_length)
+    kernel = sins * np.hanning(win_length).astype(np.float32)
 
-    num_frames = (len(audio) - win_length) // constants.SPEC_HOP_LENGTH
-    num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
-    spec = np.zeros((num_frames, num_pitches), dtype=np.float32)
-    for index in range(num_frames):
+    spec = np.zeros(
+        (audio_length // constants.SPEC_HOP_LENGTH, len(frequencies)), dtype=np.float32
+    )
+    for index in range(len(spec)):
         start = index * constants.SPEC_HOP_LENGTH
         end = start + win_length
-        bins = (audio[start:end] * kernel).mean(axis=1)
+        bins = (audio[start:end] * kernel).sum(axis=1)
         spec[index] = np.abs(bins)
     return spec
 
@@ -69,7 +70,7 @@ def spec_to_audio(spec):
         )
         start = index * constants.SPEC_HOP_LENGTH
         end = (index + 1) * constants.SPEC_HOP_LENGTH
-        audio[start:end] = (sins * weights).sum(axis=1)
+        audio[start:end] = (sins * weights).mean(axis=1)
     return audio
 
 
