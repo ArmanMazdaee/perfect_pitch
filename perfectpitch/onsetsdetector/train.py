@@ -34,7 +34,7 @@ def _evaluate_batch(onsets_detector, batch, device):
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
-    num_epochs = 20
+    num_epochs = 40
     device = torch.device(device)
 
     train_dataset = PianorollDataset(
