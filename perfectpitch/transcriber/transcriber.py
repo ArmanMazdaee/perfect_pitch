@@ -16,15 +16,13 @@ class Transcriber:
         self._onsets_detector.to(self._device)
         self._onsets_detector.eval()
 
-    def __call__(self, spec):
+    def __call__(self, spec, posenc):
         with torch.no_grad():
-            spec = torch.from_numpy(spec).to(self._device)
-            spec = spec.unsqueeze(1)
+            spec = torch.from_numpy(spec).to(self._device).unsqueeze(1)
+            posenc = torch.from_numpy(posenc).to(self._device).unsqueeze(1)
 
-            onsets_logits = self._onsets_detector(spec)
-            onsets_logits = onsets_logits.squeeze(1)
+            onsets_logits = self._onsets_detector(spec, posenc).squeeze(1).cpu().numpy()
 
-        onsets_logits = onsets_logits.numpy()
         onsets = np.zeros_like(onsets_logits)
         onsets[onsets_logits > 0] = 1
 
