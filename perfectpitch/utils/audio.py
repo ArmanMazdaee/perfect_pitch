@@ -19,59 +19,14 @@ def save_audio(path, audio):
 
 
 def audio_to_spec(audio):
-    win_length = 1024
-    audio_length = len(audio)
-    before_pad = (win_length - constants.SPEC_HOP_LENGTH) // 2
-    after_pad = win_length - before_pad
-    audio = np.pad(audio, (before_pad, after_pad), "reflect")
-
-    pitches = np.arange(constants.MIN_PITCH, constants.MAX_PITCH + 1, dtype=np.float32)
-    frequencies = 440 * (2 ** ((pitches - 69) / 12.0))
-    points = np.linspace(
-        start=0,
-        stop=frequencies * 2 * np.pi * win_length / constants.SAMPLE_RATE,
-        num=win_length,
-        endpoint=False,
-        axis=1,
-    )
-    sins = np.sin(points) + 1j * np.sin(points + 0.5 * np.pi)
-    kernel = sins * np.hanning(win_length).astype(np.float32)
-
-    spec = np.zeros(
-        (audio_length // constants.SPEC_HOP_LENGTH, len(frequencies)), dtype=np.float32
-    )
-    for index in range(len(spec)):
-        start = index * constants.SPEC_HOP_LENGTH
-        end = start + win_length
-        bins = (audio[start:end] * kernel).sum(axis=1)
-        spec[index] = np.abs(bins)
-    return spec
-
-
-def spec_to_audio(spec):
-    pitches = np.arange(constants.MIN_PITCH, constants.MAX_PITCH + 1, dtype=np.float32)
-    frequencies = 440 * (2 ** ((pitches - 69) / 12.0))
-    step = frequencies * 2 * np.pi * constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
-
-    audio = np.zeros((len(spec) - 1) * constants.SPEC_HOP_LENGTH, dtype=np.float32)
-    for index in range(len(spec) - 1):
-        points = np.linspace(
-            start=index * step,
-            stop=(index + 1) * step,
-            num=constants.SPEC_HOP_LENGTH,
-            endpoint=False,
-        )
-        sins = np.sin(points)
-        weights = np.linspace(
-            start=spec[index],
-            stop=spec[index + 1],
-            num=constants.SPEC_HOP_LENGTH,
-            endpoint=False,
-        )
-        start = index * constants.SPEC_HOP_LENGTH
-        end = (index + 1) * constants.SPEC_HOP_LENGTH
-        audio[start:end] = (sins * weights).mean(axis=1)
-    return audio
+    return librosa.feature.melspectrogram(
+        audio,
+        sr=constants.SAMPLE_RATE,
+        hop_length=constants.SPEC_HOP_LENGTH,
+        fmin=30.0,
+        n_mels=constants.SPEC_DIM,
+        htk=True,
+    ).T
 
 
 def audio_to_posenc(audio, num_frames=None):

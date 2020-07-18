@@ -34,7 +34,7 @@ class OnsetsDetector(torch.nn.Module):
         )
         self.linear1 = torch.nn.Sequential(
             torch.nn.Linear(
-                in_features=(num_pitches // 4) * 64 + constants.POSENC_DIM,
+                in_features=(constants.SPEC_DIM // 4) * 64 + constants.POSENC_DIM,
                 out_features=256,
             ),
             torch.nn.ReLU(),
