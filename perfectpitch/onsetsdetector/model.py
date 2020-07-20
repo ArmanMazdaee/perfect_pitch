@@ -45,7 +45,7 @@ class OnsetsDetector(torch.nn.Module):
                 d_model=512,
                 nhead=4,
                 dim_feedforward=1024,
-                dropout=0.2,
+                dropout=0.1,
                 activation="relu",
             ),
             num_layers=4,
