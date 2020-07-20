@@ -14,7 +14,7 @@ class OnsetsDetector(torch.nn.Module):
                 )
             ),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),
+            torch.nn.Dropout(0.1),
             torch.nn.utils.weight_norm(
                 torch.nn.Conv2d(
                     in_channels=32, out_channels=32, kernel_size=3, padding=1
@@ -22,7 +22,7 @@ class OnsetsDetector(torch.nn.Module):
             ),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=(2, 1)),
-            torch.nn.Dropout(0.2),
+            torch.nn.Dropout(0.1),
             torch.nn.utils.weight_norm(
                 torch.nn.Conv2d(
                     in_channels=32, out_channels=64, kernel_size=3, padding=1
@@ -30,27 +30,27 @@ class OnsetsDetector(torch.nn.Module):
             ),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=(2, 1)),
-            torch.nn.Dropout(0.2),
+            torch.nn.Dropout(0.1),
         )
         self.linear1 = torch.nn.Sequential(
             torch.nn.Linear(
                 in_features=(constants.SPEC_DIM // 4) * 64 + constants.POSENC_DIM,
-                out_features=256,
+                out_features=512,
             ),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.2),
+            torch.nn.Dropout(0.1),
         )
         self.sequential = torch.nn.TransformerEncoder(
             encoder_layer=torch.nn.TransformerEncoderLayer(
-                d_model=256,
+                d_model=512,
                 nhead=4,
-                dim_feedforward=256,
+                dim_feedforward=1024,
                 dropout=0.2,
                 activation="relu",
             ),
-            num_layers=1,
+            num_layers=4,
         )
-        self.linear2 = torch.nn.Linear(in_features=256, out_features=num_pitches)
+        self.linear2 = torch.nn.Linear(in_features=512, out_features=num_pitches)
 
     def forward(self, spec, posenc, mask=None):
         if mask is not None:
