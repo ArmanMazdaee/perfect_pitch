@@ -14,7 +14,8 @@ def _train_epoch(loader, model, evaluate_batch, optimizer, scheduler):
         optimizer.zero_grad()
         result["loss"].backward()
         optimizer.step()
-        scheduler.step()
+        if scheduler is not None:
+            scheduler.step()
 
         for key, value in result.items():
             results[key].append(value.detach())
