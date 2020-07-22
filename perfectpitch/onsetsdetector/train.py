@@ -18,7 +18,7 @@ def _evaluate_batch(onsets_detector, batch, device):
     label = label[mask]
 
     loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        prediction, label, pos_weight=torch.tensor(10.0)
+        prediction, label, pos_weight=torch.tensor(2.0)
     )
 
     positive = prediction >= 0
@@ -61,7 +61,7 @@ def train_onsets_detector(
     )
 
     onsets_detector = OnsetsDetector().to(device)
-    optimizer = torch.optim.Adam(onsets_detector.parameters(), lr=0.0006)
+    optimizer = torch.optim.Adam(onsets_detector.parameters(), lr=0.0001)
     scheduler = None
 
     train_model(
