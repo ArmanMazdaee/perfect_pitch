@@ -61,9 +61,7 @@ def train_onsets_detector(
     )
 
     onsets_detector = OnsetsDetector().to(device)
-    optimizer = torch.optim.Adam(
-        onsets_detector.parameters(), lr=0.0006, weight_decay=0.001
-    )
+    optimizer = torch.optim.Adam(onsets_detector.parameters(), lr=0.0006)
     scheduler = None
 
     train_model(
