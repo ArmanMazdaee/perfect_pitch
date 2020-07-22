@@ -34,8 +34,8 @@ class OnsetsDetector(torch.nn.Module):
         )
         self.linear1 = torch.nn.Sequential(
             torch.nn.Linear(
-                in_features=(constants.SPEC_DIM // 4) * 64 + constants.POSENC_DIM,
-                out_features=512,
+                in_features=(constants.SPEC_DIM // 4) * 64,
+                out_features=512 - constants.POSENC_DIM,
             ),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.2),
@@ -48,7 +48,7 @@ class OnsetsDetector(torch.nn.Module):
                 dropout=0.2,
                 activation="relu",
             ),
-            num_layers=1,
+            num_layers=4,
         )
         self.linear2 = torch.nn.Linear(in_features=512, out_features=num_pitches)
 
@@ -58,10 +58,9 @@ class OnsetsDetector(torch.nn.Module):
 
         conv2_input = spec.permute(1, 2, 0).unsqueeze(1)
         conv2_output = self.conv2d(conv2_input)
-        linear1_input = torch.cat(
-            [conv2_output.flatten(1, 2).permute(2, 0, 1), posenc], dim=2
-        )
+        linear1_input = conv2_output.flatten(1, 2).permute(2, 0, 1)
         linear1_output = self.linear1(linear1_input)
-        sequential_output = self.sequential(linear1_output, src_key_padding_mask=mask)
+        sequential_input = torch.cat([linear1_output, posenc], dim=2)
+        sequential_output = self.sequential(sequential_input, src_key_padding_mask=mask)
         linear2_output = self.linear2(sequential_output)
         return linear2_output
