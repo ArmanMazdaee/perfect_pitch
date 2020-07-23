@@ -3,7 +3,7 @@ import torch
 from perfectpitch import constants
 
 
-DROPOUT = 0.2
+DROPOUT = 0.0
 
 
 class _Conv2dResidualBlock(torch.nn.Module):
