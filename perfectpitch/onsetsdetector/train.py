@@ -34,7 +34,7 @@ def _evaluate_batch(onsets_detector, batch, device):
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
-    num_epochs = 100
+    num_epochs = 15
     device = torch.device(device)
 
     train_dataset = PianorollDataset(
@@ -62,7 +62,10 @@ def train_onsets_detector(
 
     onsets_detector = OnsetsDetector().to(device)
     optimizer = torch.optim.Adam(onsets_detector.parameters(), lr=0.0003)
-    scheduler = None
+    num_steps = sum(1 for _ in train_loader)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer, max_lr=0.0003, steps_per_epoch=num_steps, epochs=num_epochs
+    )
 
     train_model(
         train_loader,
