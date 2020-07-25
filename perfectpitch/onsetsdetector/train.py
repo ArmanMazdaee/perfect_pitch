@@ -34,11 +34,11 @@ def _evaluate_batch(onsets_detector, batch, device):
 def train_onsets_detector(
     train_dataset_path, validation_dataset_path, model_dir, device
 ):
-    num_epochs = 15
+    num_epochs = 30
     device = torch.device(device)
 
     train_dataset = PianorollDataset(
-        train_dataset_path, shuffle=True, min_length=500, max_length=1000
+        train_dataset_path, shuffle=True, min_length=150, max_length=1000
     )
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -49,7 +49,7 @@ def train_onsets_detector(
         drop_last=True,
     )
     validation_dataset = PianorollDataset(
-        validation_dataset_path, shuffle=False, min_length=500, max_length=1000
+        validation_dataset_path, shuffle=False, min_length=150, max_length=1000
     )
     validation_loader = torch.utils.data.DataLoader(
         dataset=validation_dataset,
