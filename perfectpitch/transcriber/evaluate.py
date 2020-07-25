@@ -11,8 +11,8 @@ def _evalute(ref_transcription, est_transcription):
     ref_pitches = mir_eval.util.midi_to_hz(ref_transcription["pitches"])
     ref_intervals = ref_transcription["intervals"]
 
-    est_pitches = mir_eval.util.midi_to_hz(ref_transcription["pitches"])
-    est_intervals = ref_transcription["intervals"]
+    est_pitches = mir_eval.util.midi_to_hz(est_transcription["pitches"])
+    est_intervals = est_transcription["intervals"]
 
     results = {}
     score = mir_eval.transcription.evaluate(
