@@ -3,7 +3,7 @@ import torch
 from perfectpitch import constants
 
 
-DROPOUT = 0.0
+DROPOUT = 0.1
 
 
 class OnsetsDetector(torch.nn.Module):
