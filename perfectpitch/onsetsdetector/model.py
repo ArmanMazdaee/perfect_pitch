@@ -59,9 +59,9 @@ class OnsetsDetector(torch.nn.Module):
         )
         self.sequential = torch.nn.TransformerEncoder(
             encoder_layer=TransformerConvEncoderLayer(
-                d_model=512, nhead=4, dim_conv=512, dropout=DROPOUT,
+                d_model=512, nhead=4, dim_conv=2048, dropout=DROPOUT,
             ),
-            num_layers=6,
+            num_layers=8,
         )
         self.linear = torch.nn.Linear(
             in_features=512, out_features=constants.MAX_PITCH - constants.MIN_PITCH + 1
