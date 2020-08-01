@@ -187,7 +187,9 @@ def pianoroll_to_transcription(actives, onsets, offsets, velocities):
             + constants.MIN_PITCH
         ),
         "intervals": (
-            np.asarray([(note[1], note[2]) for note in notes], np.float32)
+            np.asarray([(note[1], note[2]) for note in notes], np.float32).reshape(
+                -1, 2
+            )
             * frame_duration
         ),
         "velocities": (
