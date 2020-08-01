@@ -14,10 +14,14 @@ class TransformerConvEncoderLayer(torch.nn.Module):
         self.norm1 = torch.nn.LayerNorm(d_model)
 
         self.conv1ds = torch.nn.Sequential(
-            torch.nn.Conv1d(d_model, dim_conv, kernel_size=3, padding=1),
+            torch.nn.Conv1d(
+                in_channels=d_model, out_channels=dim_conv, kernel_size=3, padding=1
+            ),
             torch.nn.ReLU(),
             torch.nn.Dropout(dropout),
-            torch.nn.Conv1d(dim_conv, d_model, kernel_size=3, padding=1),
+            torch.nn.Conv1d(
+                in_channels=dim_conv, out_channels=d_model, kernel_size=3, padding=1
+            ),
         )
         self.dropout2 = torch.nn.Dropout(dropout)
         self.norm2 = torch.nn.LayerNorm(d_model)
@@ -43,26 +47,15 @@ class TransformerConvEncoderLayer(torch.nn.Module):
 class OnsetsDetector(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        num_pitches = constants.MAX_PITCH - constants.MIN_PITCH + 1
-        self.conv2d = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=1, out_channels=48, kernel_size=3, padding=1),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(in_channels=48, out_channels=48, kernel_size=3, padding=1),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=(2, 1)),
-            torch.nn.Dropout(p=DROPOUT),
-            torch.nn.Conv2d(in_channels=48, out_channels=96, kernel_size=3, padding=1),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=(2, 1)),
-            torch.nn.Dropout(p=DROPOUT),
-        )
-        self.linear1 = torch.nn.Sequential(
-            torch.nn.Linear(
-                in_features=(constants.SPEC_DIM // 4) * 96,
-                out_features=512 - constants.POSENC_DIM,
+        self.conv1d = torch.nn.Sequential(
+            torch.nn.Conv1d(
+                in_channels=constants.SPEC_DIM,
+                out_channels=512 - constants.POSENC_DIM,
+                kernel_size=3,
+                padding=1,
             ),
             torch.nn.ReLU(),
-            torch.nn.Dropout(p=DROPOUT),
+            torch.nn.Dropout(DROPOUT),
         )
         self.sequential = torch.nn.TransformerEncoder(
             encoder_layer=TransformerConvEncoderLayer(
@@ -70,17 +63,16 @@ class OnsetsDetector(torch.nn.Module):
             ),
             num_layers=6,
         )
-        self.linear2 = torch.nn.Linear(in_features=512, out_features=num_pitches)
+        self.linear = torch.nn.Linear(
+            in_features=512, out_features=constants.MAX_PITCH - constants.MIN_PITCH + 1
+        )
 
     def forward(self, spec, posenc, mask=None):
         if mask is not None:
             mask = ~mask.T
 
-        conv2_input = spec.permute(1, 2, 0).unsqueeze(1)
-        conv2_output = self.conv2d(conv2_input)
-        linear1_input = conv2_output.flatten(1, 2).permute(2, 0, 1)
-        linear1_output = self.linear1(linear1_input)
-        sequential_input = torch.cat([linear1_output, posenc], dim=2)
+        conv1d_input = spec.permute(1, 2, 0)
+        conv1d_output = self.conv1d(conv1d_input)
+        sequential_input = torch.cat([conv1d_output.permute(2, 0, 1), posenc], dim=2)
         sequential_output = self.sequential(sequential_input, src_key_padding_mask=mask)
-        linear2_output = self.linear2(sequential_output)
-        return linear2_output
+        return self.linear(sequential_output)
