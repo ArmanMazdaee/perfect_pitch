@@ -3,7 +3,41 @@ import torch
 from perfectpitch import constants
 
 
-DROPOUT = 0.1
+DROPOUT = 0.0
+
+
+class TransformerConvEncoderLayer(torch.nn.Module):
+    def __init__(self, d_model, nhead, dim_conv, dropout):
+        super().__init__()
+        self.self_attn = torch.nn.MultiheadAttention(d_model, nhead, dropout)
+        self.dropout1 = torch.nn.Dropout(dropout)
+        self.norm1 = torch.nn.LayerNorm(d_model)
+
+        self.conv1ds = torch.nn.Sequential(
+            torch.nn.Conv1d(d_model, dim_conv, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(dropout),
+            torch.nn.Conv1d(dim_conv, d_model, kernel_size=3, padding=1),
+        )
+        self.dropout2 = torch.nn.Dropout(dropout)
+        self.norm2 = torch.nn.LayerNorm(d_model)
+
+    def forward(self, src, src_mask=None, src_key_padding_mask=None):
+        x = self.self_attn(
+            query=src,
+            key=src,
+            value=src,
+            attn_mask=src_mask,
+            key_padding_mask=src_key_padding_mask,
+        )[0]
+        x = self.dropout1(x)
+        x = self.norm1(src + x)
+
+        y = x.permute(1, 2, 0)
+        y = self.conv1ds(y)
+        y = y.permute(2, 0, 1)
+        y = self.dropout2(y)
+        return self.norm2(x + y)
 
 
 class OnsetsDetector(torch.nn.Module):
@@ -31,12 +65,8 @@ class OnsetsDetector(torch.nn.Module):
             torch.nn.Dropout(p=DROPOUT),
         )
         self.sequential = torch.nn.TransformerEncoder(
-            encoder_layer=torch.nn.TransformerEncoderLayer(
-                d_model=512,
-                nhead=4,
-                dim_feedforward=1024,
-                dropout=DROPOUT,
-                activation="relu",
+            encoder_layer=TransformerConvEncoderLayer(
+                d_model=512, nhead=4, dim_conv=512, dropout=DROPOUT,
             ),
             num_layers=6,
         )
