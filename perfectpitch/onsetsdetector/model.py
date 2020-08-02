@@ -5,7 +5,7 @@ import torch
 from perfectpitch import constants
 
 
-DROPOUT = 0.0
+DROPOUT = 0.1
 
 
 def positional_encoding(x):
