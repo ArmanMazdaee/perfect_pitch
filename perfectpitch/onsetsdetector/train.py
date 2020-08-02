@@ -10,9 +10,8 @@ from .model import OnsetsDetector
 
 def _evaluate_batch(onsets_detector, batch, device):
     spec = batch["spec"].to(device)
-    posenc = batch["posenc"].to(device)
     mask = batch["mask"].to(device)
-    prediction = onsets_detector(spec, posenc, mask)
+    prediction = onsets_detector(spec, mask)
     prediction = prediction[mask]
     label = batch["pianoroll"]["onsets"].to(device)
     label = label[mask]

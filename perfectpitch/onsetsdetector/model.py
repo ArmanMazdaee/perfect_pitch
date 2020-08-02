@@ -1,9 +1,25 @@
+import math
+
 import torch
 
 from perfectpitch import constants
 
 
 DROPOUT = 0.0
+
+
+def positional_encoding(x):
+    length = x.shape[0]
+    dimension = x.shape[2]
+    position = torch.arange(0, length, 1, dtype=torch.float, device=x.device)
+    div_term = torch.arange(0, dimension, 2, dtype=torch.float, device=x.device)
+    points = position.unsqueeze(1) * torch.exp(
+        div_term * -math.log(10000.0) / dimension
+    )
+    sin = torch.sin(points)
+    cos = torch.cos(points)
+    encoding = torch.cat([sin, cos], dim=1).unsqueeze(1)
+    return x + encoding
 
 
 class TransformerConvEncoderLayer(torch.nn.Module):
@@ -50,7 +66,7 @@ class OnsetsDetector(torch.nn.Module):
         self.conv1d = torch.nn.Sequential(
             torch.nn.Conv1d(
                 in_channels=constants.SPEC_DIM,
-                out_channels=512 - constants.POSENC_DIM,
+                out_channels=512,
                 kernel_size=3,
                 padding=1,
             ),
@@ -67,12 +83,12 @@ class OnsetsDetector(torch.nn.Module):
             in_features=512, out_features=constants.MAX_PITCH - constants.MIN_PITCH + 1
         )
 
-    def forward(self, spec, posenc, mask=None):
+    def forward(self, spec, mask=None):
         if mask is not None:
             mask = ~mask.T
 
         conv1d_input = spec.permute(1, 2, 0)
         conv1d_output = self.conv1d(conv1d_input)
-        sequential_input = torch.cat([conv1d_output.permute(2, 0, 1), posenc], dim=2)
+        sequential_input = positional_encoding(conv1d_output.permute(2, 0, 1))
         sequential_output = self.sequential(sequential_input, src_key_padding_mask=mask)
         return self.linear(sequential_output)

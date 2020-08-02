@@ -30,7 +30,6 @@ class PianorollDataset(TranscriptionDataset):
         for sample in super().__iter__():
             spec = sample["spec"]
             length = spec.shape[0]
-            posenc = sample["posenc"]
             transcription = sample["transcription"]
             pianoroll = transcription_to_pianoroll(
                 transcription["pitches"],
@@ -44,7 +43,6 @@ class PianorollDataset(TranscriptionDataset):
                 buffer.append(
                     {
                         "spec": spec[start:end, :],
-                        "posenc": posenc[start:end, :],
                         "pianoroll": {
                             key: value[start:end, :] for key, value in pianoroll.items()
                         },

@@ -28,9 +28,8 @@ def evaluate_transcriber(dataset_path, onsets_detector_path, device):
     results = defaultdict(list)
     for sample in tqdm(dataset, desc="evaluating"):
         spec = sample["spec"]
-        posenc = sample["posenc"]
         ref_transcription = sample["transcription"]
-        est_transcription = transcriber(spec, posenc)
+        est_transcription = transcriber(spec)
         score = _evalute(ref_transcription, est_transcription)
         for key, value in score.items():
             results[key].append(value)

@@ -27,18 +27,3 @@ def audio_to_spec(audio):
         n_mels=constants.SPEC_DIM,
         htk=True,
     ).T
-
-
-def audio_to_posenc(audio, num_frames=None):
-    frame_duration = constants.SPEC_HOP_LENGTH / constants.SAMPLE_RATE
-    if num_frames is None:
-        num_frames = int(len(audio) / frame_duration) + 1
-
-    frames = np.expand_dims(np.arange(num_frames), axis=1)
-    div_term = np.exp(
-        np.arange(0, constants.POSENC_DIM, 2) * -np.log(10000) / constants.POSENC_DIM
-    )
-    points = frames * div_term
-    sin = np.sin(points)
-    cos = np.cos(points)
-    return np.concatenate([sin, cos], axis=1).astype(np.float32)
