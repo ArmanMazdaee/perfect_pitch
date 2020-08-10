@@ -33,6 +33,7 @@ class OnsetsDetector(torch.nn.Module):
                 heads=8,
                 lsh_dropout=DROPOUT,
                 ff_dropout=DROPOUT,
+                ff_chunks=400,
             )
         )
         self.linear = torch.nn.Linear(
