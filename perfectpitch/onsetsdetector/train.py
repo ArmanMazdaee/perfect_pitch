@@ -36,23 +36,21 @@ def train_onsets_detector(
     num_epochs = 20
     device = torch.device(device)
 
-    train_dataset = PianorollDataset(
-        train_dataset_path, shuffle=True, min_length=150, max_length=1000
-    )
+    train_dataset = PianorollDataset(train_dataset_path)
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
-        batch_size=16,
+        batch_size=1,
+        shuffle=True,
         num_workers=1,
         collate_fn=padded_collate,
         pin_memory=True,
         drop_last=True,
     )
-    validation_dataset = PianorollDataset(
-        validation_dataset_path, shuffle=False, min_length=150, max_length=1000
-    )
+    validation_dataset = PianorollDataset(validation_dataset_path)
     validation_loader = torch.utils.data.DataLoader(
         dataset=validation_dataset,
-        batch_size=16,
+        batch_size=1,
+        shuffle=False,
         num_workers=1,
         collate_fn=padded_collate,
         pin_memory=True,
