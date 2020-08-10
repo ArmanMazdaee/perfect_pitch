@@ -19,6 +19,8 @@ setup(
         "librosa>=0.8.0",
         "mido>=1.2.0",
         "torch>=1.6.0",
+        "axial-positional-embedding>=0.2.0",
+        "reformer_pytorch>=1.1.0",
         "mir_eval>=0.6.0",
         "tqdm>=4.42.0",
     ],
