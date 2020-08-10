@@ -16,10 +16,10 @@ setup(
         "numpy>=1.18.0",
         "soundfile >= 0.9.0",
         "numba==0.48.0",  # pin numba version for librosa
-        "librosa>=0.7.2",
+        "librosa>=0.8.0",
         "mido>=1.2.0",
-        "torch>=1.5.0",
-        "mir_eval>=0.5.0",
+        "torch>=1.6.0",
+        "mir_eval>=0.6.0",
         "tqdm>=4.42.0",
     ],
 )
