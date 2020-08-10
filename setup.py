@@ -18,7 +18,7 @@ setup(
         "numba==0.48.0",  # pin numba version for librosa
         "librosa>=0.8.0",
         "mido>=1.2.0",
-        "torch>=1.6.0",
+        "torch>=1.5.0",
         "axial-positional-embedding>=0.2.0",
         "reformer_pytorch>=1.1.0",
         "mir_eval>=0.6.0",
