@@ -59,9 +59,8 @@ def train_onsets_detector(
 
     onsets_detector = OnsetsDetector().to(device)
     optimizer = torch.optim.Adam(onsets_detector.parameters(), lr=0.0003)
-    num_steps = sum(1 for _ in train_loader)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=0.0003, steps_per_epoch=num_steps, epochs=num_epochs
+        optimizer, max_lr=0.0003, steps_per_epoch=len(train_loader), epochs=num_epochs
     )
 
     train_model(
