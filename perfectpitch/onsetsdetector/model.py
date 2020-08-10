@@ -1,6 +1,6 @@
 import torch
 from axial_positional_embedding import AxialPositionalEmbedding
-from reformer_pytorch import Reformer
+from reformer_pytorch import Reformer, Autopadder
 
 from perfectpitch import constants
 
@@ -25,13 +25,15 @@ class OnsetsDetector(torch.nn.Module):
         self.positional_embedding = AxialPositionalEmbedding(
             512, (MAX_SEQ_LEN // 64, 64)
         )
-        self.sequential = Reformer(
-            dim=512,
-            depth=8,
-            max_seq_len=MAX_SEQ_LEN,
-            heads=8,
-            lsh_dropout=DROPOUT,
-            ff_dropout=DROPOUT,
+        self.sequential = Autopadder(
+            Reformer(
+                dim=512,
+                depth=8,
+                max_seq_len=MAX_SEQ_LEN,
+                heads=8,
+                lsh_dropout=DROPOUT,
+                ff_dropout=DROPOUT,
+            )
         )
         self.linear = torch.nn.Linear(
             in_features=512, out_features=constants.MAX_PITCH - constants.MIN_PITCH + 1
