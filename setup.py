@@ -13,12 +13,10 @@ setup(
     entry_points={"console_scripts": ["perfectpitch = perfectpitch:main"]},
     python_requires=">=3.6,<4.0",
     install_requires=[
-        "numpy>=1.18.0",
-        "soundfile >= 0.9.0",
-        "numba==0.48.0",  # pin numba version for librosa
+        "numpy>=1.18.0,<1.19.0",
+        "tensorflow>=2.3.0",
+        "note-seq",
         "librosa>=0.8.0",
-        "mido>=1.2.0",
-        "torch>=1.6.0",
         "mir_eval>=0.6.0",
         "tqdm>=4.42.0",
     ],
