@@ -45,7 +45,7 @@ def convert_dataset(output_path, split, names, wav_filenames, midi_filenames):
         _convert_sample, num_parallel_calls=tf.data.experimental.AUTOTUNE
     )
 
-    os.makedirs(output_path, exist_ok=True)
+    tf.io.gfile.makedirs(output_path)
     output_filename = os.path.join(output_path, f"{split}.tfrecord")
     with tf.io.TFRecordWriter(output_filename) as writer:
         for serialized_sample in tqdm(
