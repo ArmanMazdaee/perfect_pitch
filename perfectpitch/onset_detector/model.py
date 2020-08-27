@@ -69,6 +69,7 @@ class Model(tf.keras.Model):
         self.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0003),
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+            metrics=[tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
         )
 
     def call(self, inputs, training=False):
