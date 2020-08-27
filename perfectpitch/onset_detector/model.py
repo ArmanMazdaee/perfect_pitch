@@ -32,8 +32,9 @@ class _Sequential(tf.keras.layers.Layer):
         ]
 
     def call(self, inputs, lengths, training):
-        inputs_shape = tf.shape(inputs)
-        mask = tf.expand_dims(tf.range(inputs_shape[1]), axis=0) >= lengths
+        max_length = tf.shape(inputs)[1]
+        mask = tf.sequence_mask(lengths, max_length, dtype=tf.dtypes.float32)
+        mask = 1 - mask
         mask = tf.expand_dims(mask, axis=1)
         mask = tf.cast(mask, inputs.dtype)
 
@@ -66,9 +67,40 @@ class Model(tf.keras.Model):
         self.linear = tf.keras.layers.Dense(constants.NUM_PITCHES)
 
     def call(self, inputs, training=False):
-        spec = inputs["spec"]
-        length = inputs["length"]
+        spec, length = inputs
         x = self.embedding(spec, training=training)
         x = self.sequential(x, length, training=training)
         x = self.linear(x)
         return x
+
+    def train_step(self, data):
+        spec = data["spec"]
+        length = data["length"]
+
+        max_length = tf.shape(spec)[1]
+        mask = tf.sequence_mask(length, max_length)
+        labels = tf.boolean_mask(data["onsets"], mask)
+        with tf.GradientTape() as tape:
+            predictions = tf.boolean_mask(self((spec, length), training=True), mask)
+            loss = self.compiled_loss(
+                labels, predictions, regularization_losses=self.losses
+            )
+
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        self.compiled_metrics.update_state(labels, tf.nn.sigmoid(predictions))
+        return {m.name: m.result() for m in self.metrics}
+
+    def test_step(self, data):
+        spec = data["spec"]
+        length = data["length"]
+
+        max_length = tf.shape(spec)[1]
+        mask = tf.sequence_mask(length, max_length)
+        labels = tf.boolean_mask(data["onsets"], mask)
+        predictions = tf.boolean_mask(self((spec, length), training=False), mask)
+
+        self.compiled_loss(labels, predictions, regularization_losses=self.losses)
+        self.compiled_metrics.update_state(labels, tf.nn.sigmoid(predictions))
+        return {m.name: m.result() for m in self.metrics}

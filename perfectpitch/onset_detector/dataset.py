@@ -37,39 +37,36 @@ def _parse_example(example):
     )
     onsets = tf.math.minimum(onsets, 1.0)
 
-    sample_weight = tf.ones((num_frames,))
-
-    features = {"spec": spec, "length": tf.expand_dims(num_frames, axis=-1)}
-    return features, onsets, sample_weight
+    return {
+        "spec": spec,
+        "onsets": onsets,
+        "length": num_frames,
+    }
 
 
 @tf.function
-def _split_example(features, label, sample_weight, min_length, max_length):
-    spec = features["spec"]
-    num_frames = len(label)
-    last_length = num_frames % max_length
+def _split_example(example, min_length, max_length):
+    spec = example["spec"]
+    onsets = example["onsets"]
+    length = example["length"]
 
-    length = tf.fill((num_frames // max_length, 1), max_length)
+    last_length = length % max_length
+    length = tf.fill((length // max_length,), max_length)
     if 0 < last_length and last_length < min_length:
         spec = spec[:-last_length]
-        label = label[:-last_length]
-        sample_weight = sample_weight[:-last_length]
-    else:
-        length = tf.concat((length, [[last_length]]), axis=0)
+        onsets = onsets[:-last_length]
+    elif last_length >= min_length:
+        length = tf.concat((length, [last_length]), axis=0)
         padding = max_length - last_length
         spec = tf.pad(spec, [[0, padding], [0, 0]])
-        label = tf.pad(label, [[0, padding], [0, 0]])
-        sample_weight = tf.pad(sample_weight, [[0, padding]])
+        onsets = tf.pad(onsets, [[0, padding], [0, 0]])
 
     return tf.data.Dataset.from_tensor_slices(
-        (
-            {
-                "spec": tf.reshape(spec, (-1, max_length, constants.SPEC_DIM)),
-                "length": length,
-            },
-            tf.reshape(label, (-1, max_length, constants.NUM_PITCHES)),
-            tf.reshape(sample_weight, (-1, max_length)),
-        )
+        {
+            "spec": tf.reshape(spec, (-1, max_length, constants.SPEC_DIM)),
+            "onsets": tf.reshape(onsets, (-1, max_length, constants.NUM_PITCHES)),
+            "length": length,
+        },
     )
 
 
