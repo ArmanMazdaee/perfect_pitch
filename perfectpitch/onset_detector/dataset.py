@@ -50,7 +50,7 @@ def _split_example(features, label, sample_weight, min_length, max_length):
     last_length = num_frames % max_length
 
     length = tf.fill((num_frames // max_length, 1), max_length)
-    if last_length < min_length:
+    if 0 < last_length and last_length < min_length:
         spec = spec[:-last_length]
         label = label[:-last_length]
         sample_weight = sample_weight[:-last_length]
