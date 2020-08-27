@@ -17,8 +17,4 @@ def train(train_dataset_path, validation_dataset_path):
     )
 
     model = Model()
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0003),
-        loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
-    )
     model.fit(x=train_dataset, validation_data=validation_dataset, epochs=10)

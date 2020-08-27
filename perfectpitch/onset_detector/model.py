@@ -66,6 +66,11 @@ class Model(tf.keras.Model):
         )
         self.linear = tf.keras.layers.Dense(constants.NUM_PITCHES)
 
+        self.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.0003),
+            loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+        )
+
     def call(self, inputs, training=False):
         spec, length = inputs
         x = self.embedding(spec, training=training)
