@@ -1,5 +1,3 @@
-import tensorflow as tf
-
 from .dataset import get_dataset
 from .model import Model
 
