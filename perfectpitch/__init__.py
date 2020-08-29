@@ -2,7 +2,6 @@ import argparse
 
 import perfectpitch.convert_dataset.convert_maps
 import perfectpitch.convert_dataset.convert_maestro
-import perfectpitch.onset_detector.train
 
 
 def main():
@@ -60,29 +59,6 @@ def main():
         required=True,
         help="Path of the converted dataset",
         dest="output_path",
-    )
-
-    train_onsets_detector_parser = subparsers.add_parser(
-        "train-onsets-detector",
-        help="Train the onsets detector",
-        description="Train the onsets detector",
-    )
-    train_onsets_detector_parser.set_defaults(
-        func=perfectpitch.onset_detector.train.train
-    )
-    train_onsets_detector_parser.add_argument(
-        "--train-dataset",
-        "-t",
-        required=True,
-        help="Path of the train dataset",
-        dest="train_dataset_path",
-    )
-    train_onsets_detector_parser.add_argument(
-        "--validation-dataset",
-        "-v",
-        required=True,
-        help="Path of the validation dataset",
-        dest="validation_dataset_path",
     )
 
     args = parser.parse_args()
