@@ -2,6 +2,7 @@ import tensorflow as tf
 
 from perfectpitch import constants
 from perfectpitch.utils.layers import PositionalEncoding, SelfAttention
+from perfectpitch.utils.losses import BinaryCrossentropy
 
 
 class _Sequential(tf.keras.layers.Layer):
@@ -77,8 +78,8 @@ class Model(tf.keras.Model):
         self.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
             loss={
-                "onsets": tf.keras.losses.BinaryCrossentropy(),
-                "offsets": tf.keras.losses.BinaryCrossentropy(),
+                "onsets": BinaryCrossentropy(pos_weight=5.0),
+                "offsets": BinaryCrossentropy(pos_weight=5.0),
             },
             metrics={
                 "onsets": [tf.keras.metrics.Precision(), tf.keras.metrics.Recall()],
