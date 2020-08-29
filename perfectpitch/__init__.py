@@ -2,6 +2,7 @@ import argparse
 
 import perfectpitch.convert_dataset.convert_maps
 import perfectpitch.convert_dataset.convert_maestro
+import perfectpitch.music_model.train
 
 
 def main():
@@ -59,6 +60,34 @@ def main():
         required=True,
         help="Path of the converted dataset",
         dest="output_path",
+    )
+
+    train_music_model_parser = subparsers.add_parser(
+        "train-music-model",
+        help="Train the music model",
+        description="Train the music model",
+    )
+    train_music_model_parser.set_defaults(func=perfectpitch.music_model.train.train)
+    train_music_model_parser.add_argument(
+        "--train-dataset",
+        "-t",
+        required=True,
+        help="Path of the train dataset",
+        dest="train_dataset_path",
+    )
+    train_music_model_parser.add_argument(
+        "--validation-dataset",
+        "-v",
+        required=True,
+        help="Path of the validation dataset",
+        dest="validation_dataset_path",
+    )
+    train_music_model_parser.add_argument(
+        "--model-dir",
+        "-m",
+        required=True,
+        help="Directory to use save the logs and weights",
+        dest="model_dir",
     )
 
     args = parser.parse_args()

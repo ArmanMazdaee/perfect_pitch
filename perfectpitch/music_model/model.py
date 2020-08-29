@@ -75,7 +75,7 @@ class Model(tf.keras.Model):
         )
 
         self.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=0.0003),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
             loss={
                 "onsets": tf.keras.losses.BinaryCrossentropy(),
                 "offsets": tf.keras.losses.BinaryCrossentropy(),
